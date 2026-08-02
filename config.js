@@ -1,5 +1,5 @@
 window.DASHBOARD_CONFIG = {
-  companyName: "Northstar",
+  companyName: "UniCRM",
   github: {
     owner: "UniCRM-dev",
     repos: {

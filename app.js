@@ -45,8 +45,8 @@
     const org = configured ? `https://github.com/${owner}` : "https://github.com/";
     const project = configured ? `https://github.com/orgs/${owner}/projects/${gh.projectNumber || 1}` : org;
     const set = (id, url) => { const el = $(id); if (el) el.href = url; };
-    $("#company-name").textContent = $("#footer-company").textContent = config.companyName || "Northstar";
-    document.title = `${config.companyName || "Northstar"} Operations`;
+    $("#company-name").textContent = $("#footer-company").textContent = config.companyName || "UniCRM";
+    document.title = `${config.companyName || "UniCRM"} Operations`;
     set("#github-org-link", org); set("#new-task-link", configured ? `${repoUrl(repos.operations)}/issues/new` : "https://github.com/issues");
     set("#priorities-link", project); set("#blockers-link", configured ? issuesUrl(repos.operations, "is:open label:blocked") : org);
     set("#milestones-link", project); set("#dev-board-link", project); set("#sales-board-link", project);
