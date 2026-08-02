@@ -394,6 +394,9 @@ main > *,
 .metric-note.positive { color: var(--green-ink); }
 .metric-note.warning { color: var(--amber-ink); }
 
+.empty-state { margin: 0; padding: 14px 0; color: var(--text-3); font-size: 12px; line-height: 1.5; }
+tr .empty-state { padding: 14px 0; }
+
 .progress {
   display: block;
   height: 4px;
