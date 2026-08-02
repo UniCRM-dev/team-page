@@ -1,0 +1,179 @@
+/* ============================================================
+   Left navigation rail
+   Reads tokens from styles.css; follows the active theme.
+   ============================================================ */
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  width: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px 16px;
+  background: var(--surface-sunk);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 8px 18px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+.brand strong,
+.brand small { display: block; }
+.brand strong { font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; }
+.brand small {
+  margin-top: 1px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.side-nav { padding-top: 4px; }
+.side-nav section { padding: 12px 0 6px; }
+.side-nav h2 { margin: 0 10px 6px; color: var(--text-3); font-size: 9px; }
+
+.side-nav a,
+.side-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: 500 12.5px/1.2 var(--font-ui);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease;
+}
+.side-nav a:hover,
+.side-nav button:hover {
+  background: var(--hover-wash);
+  color: var(--text);
+}
+.side-nav a.active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.nav-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  color: var(--text-3);
+}
+.side-nav a:hover .nav-icon,
+.side-nav button:hover .nav-icon { color: var(--text-2); }
+.side-nav a.active .nav-icon { color: var(--accent); }
+
+.repo-indicator {
+  width: 7px;
+  height: 7px;
+  margin: 0 5px;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+}
+#sidebar-repositories a b {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0;
+  transition: opacity .14s ease;
+}
+#sidebar-repositories a:hover b { opacity: 1; }
+
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 16px 8px 0;
+  border-top: 1px solid var(--border);
+}
+.sidebar-footer > span:last-child strong,
+.sidebar-footer > span:last-child small { display: block; }
+.sidebar-footer strong { color: var(--text-2); font-size: 11px; font-weight: 600; }
+.sidebar-footer small { color: var(--text-3); font-size: 9.5px; }
+
+.team-stack { display: flex; min-width: 56px; }
+.team-stack i {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: -7px;
+  border: 2px solid var(--surface-sunk);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font: 700 7px/1 var(--font-mono);
+  font-style: normal;
+}
+.team-stack i:nth-child(even) { background: var(--blue-soft); color: var(--blue-ink); }
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 1100px) {
+  :root { --sidebar-w: 216px; }
+  .sidebar { padding-left: 10px; padding-right: 10px; }
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    padding: 12px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+  }
+  .sidebar .brand { padding: 0 0 12px; border-bottom: 0; }
+  .side-nav { display: flex; gap: 6px; padding: 0 0 2px; overflow-x: auto; scrollbar-width: none; }
+  .side-nav::-webkit-scrollbar { display: none; }
+  .side-nav section { display: flex; gap: 6px; padding: 0; }
+  .side-nav h2,
+  #sidebar-repositories,
+  .sidebar-footer { display: none; }
+  .side-nav a,
+  .side-nav button {
+    width: auto;
+    padding: 0 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .topbar { position: static; margin-left: 0; height: 52px; }
+  .breadcrumb { display: none; }
+  main, footer { margin-left: 0; }
+}
