@@ -21,7 +21,7 @@ When configured, the dashboard reads the product repository's public metadata us
 - latest release;
 - latest Actions workflow result.
 
-Every work item links back to the relevant repository, issue search, project board, pull request list, Actions page, or releases page. The idea form safely prepares a new issue in the configured `ideas` repository; the user reviews and submits it on GitHub.
+Every work item links back to the relevant repository, issue search, project board, pull request list, Actions page, or releases page. The idea form safely prepares a new GitHub Discussion in the org's **Ideas** category; the user reviews and submits it on GitHub. The poll panel shows the current team poll and links to the **Polls** discussion category.
 
 If configuration is incomplete, a repository is unavailable, or GitHub rate-limits the browser request, the dashboard keeps working with its built-in example data and marks the header as **Mock data**.
 

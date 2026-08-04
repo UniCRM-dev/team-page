@@ -191,6 +191,13 @@
 
     <section class="section-grid closing-grid">
       <article class="panel span-2"><div class="panel-heading"><div><p class="kicker">Context</p><h2>Recent decisions</h2></div><a id="decisions-link" href="https://github.com/issues" target="_blank" rel="noopener">Decision log</a></div><div id="decision-list"></div></article>
+      <article class="panel poll-panel">
+        <div class="panel-heading"><div><p class="kicker">Team poll</p><h2>Open question</h2></div><a id="polls-link" href="https://github.com/orgs/UniCRM-dev/discussions/categories/polls" target="_blank" rel="noopener">Polls <span aria-hidden="true">↗</span></a></div>
+        <h3 class="poll-question" id="poll-question"></h3>
+        <p class="poll-note">Results shown from the latest GitHub discussion poll. Tap an option to vote on GitHub.</p>
+        <div class="poll-options" id="poll-options"></div>
+        <a class="button button-secondary button-small" id="new-poll-link" href="https://github.com/orgs/UniCRM-dev/discussions/new?category=polls" target="_blank" rel="noopener">Start a new poll <span aria-hidden="true">↗</span></a>
+      </article>
       <article class="panel quick-links"><div class="panel-heading"><div><p class="kicker">Company knowledge</p><h2>Quick links</h2></div></div><nav id="quick-links" aria-label="Company resources"></nav></article>
     </section>
   </main>
@@ -208,14 +215,14 @@
         <div><p class="kicker">Idea inbox</p><h2 id="idea-title">Submit an idea</h2></div>
         <button class="icon-button" type="submit" value="cancel" formnovalidate aria-label="Close dialog">×</button>
       </div>
-      <p class="dialog-copy">Turn an observation or opportunity into a trackable GitHub issue.</p>
+      <p class="dialog-copy">Turn an observation or opportunity into a trackable GitHub discussion in the Ideas category.</p>
       <label>Idea title<input id="idea-title-input" name="title" required maxlength="120" placeholder="A concise, action-oriented title"></label>
       <label>What problem does this solve?<textarea id="idea-problem" name="problem" required rows="4" placeholder="Describe the problem, who it affects, and why it matters."></textarea></label>
       <div class="form-row">
         <label>Area<select id="idea-area" name="area"><option>Product</option><option>Sales</option><option>Operations</option><option>Customer request</option></select></label>
         <label>Submitted by<select id="idea-owner" name="owner"><option>Shawn</option><option>Courtney</option><option>Jesse</option><option>Chelsey</option></select></label>
       </div>
-      <p class="form-note">Your entry opens GitHub's new issue screen with the details prefilled. Nothing sensitive is stored here.</p>
+      <p class="form-note">Your entry opens GitHub's new discussion screen with the details prefilled. Nothing sensitive is stored here.</p>
       <div class="dialog-actions">
         <button class="button button-secondary" type="submit" value="cancel" formnovalidate>Cancel</button>
         <button class="button button-primary" id="submit-idea" value="default">Continue to GitHub <span aria-hidden="true">↗</span></button>

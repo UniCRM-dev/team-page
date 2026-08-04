@@ -10,6 +10,8 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const repoUrl = repo => `https://github.com/${owner}/${repo}`;
   const issuesUrl = (repo, query = "") => `${repoUrl(repo)}/issues${query ? `?q=${encodeURIComponent(query)}` : ""}`;
+  const discussionCategory = slug => `https://github.com/orgs/${owner}/discussions/categories/${slug}`;
+  const newDiscussion = (slug, title = "", body = "") => `https://github.com/orgs/${owner}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
   const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 
   function avatar(name) { return `<span class="avatar" title="${escapeHtml(name)}">${escapeHtml(name.slice(0, 2).toUpperCase())}</span>`; }
@@ -39,6 +41,17 @@
     $("#event-list").innerHTML = schedule.map(e => `<div class="event-item ${e.tone}"><time><strong>${escapeHtml(e.time)}</strong><span>${escapeHtml(e.period)}</span></time><div><h3>${escapeHtml(e.title)}</h3><p>${escapeHtml(e.meta)}</p></div></div>`).join("") || emptyState("Add upcoming events in config.js");
     const pipeline = config.pipeline || [];
     $("#pipeline-bars").innerHTML = pipeline.map(([name, count, width]) => `<div class="pipeline-row"><span>${escapeHtml(name)}</span><div><i style="width:${width}%"></i></div><b>${count}</b></div>`).join("") || emptyState("Configure pipeline stages in config.js");
+    const poll = config.poll || {};
+    if (poll.question) {
+      const total = (poll.options || []).reduce((sum, option) => sum + (option.votes || 0), 0) || 1;
+      $("#poll-question").textContent = poll.question;
+      $("#poll-options").innerHTML = (poll.options || []).map(option => {
+        const pct = Math.round(((option.votes || 0) / total) * 100);
+        return `<a class="poll-option" href="${discussionCategory((config.discussions && config.discussions.categories && config.discussions.categories.polls) || "polls")}" target="_blank" rel="noopener"><span>${escapeHtml(option.label)}</span><div><i style="width:${pct}%"></i></div><b>${option.votes || 0}</b></a>`;
+      }).join("") || emptyState("Add poll options in config.js");
+    } else {
+      $("#poll-options").innerHTML = emptyState("Add a poll in config.js");
+    }
   }
 
   function configureLinks() {
@@ -57,10 +70,14 @@
     set("#sidebar-notes-link", configured ? repoUrl(repos.operations) : org);
     set("#sidebar-wiki-link", configured ? `${repoUrl(repos.operations)}/wiki` : org);
     set("#sidebar-feedback-link", configured ? issuesUrl(repos.sales, "is:open label:customer-feedback") : org);
+    const cats = (config.discussions && config.discussions.categories) || {};
+    const pollsSlug = cats.polls || "polls";
+    set("#polls-link", configured ? discussionCategory(pollsSlug) : org);
+    set("#new-poll-link", configured ? newDiscussion(pollsSlug) : org);
     const repositoryLinks = [["Product Core", repos.product], ["Company Ops", repos.operations], ["Sales Pipeline", repos.sales], ["Ideas", repos.ideas]];
     $("#sidebar-repositories").innerHTML = repositoryLinks.map(([name, repo]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="repo-indicator" aria-hidden="true"></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`).join("");
-    const links = [["Notes & handbook", repos.operations, "Company context and playbooks"], ["Ideas inbox", repos.ideas, "Proposals and opportunities"], ["Customer feedback", repos.sales, "Requests from the field"]];
-    $("#quick-links").innerHTML = links.map(([name, repo, desc]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="quick-icon">${name.charAt(0)}</span><span><strong>${name}</strong><small>${desc}</small></span><b>↗</b></a>`).join("");
+    const links = [["Notes & handbook", repos.operations, "Company context and playbooks"], ["Ideas inbox", cats.ideas ? discussionCategory(cats.ideas) : repos.ideas, "Proposals and opportunities"], ["Customer feedback", repos.sales, "Requests from the field"], ["Announcements", cats.announcements ? discussionCategory(cats.announcements) : org, "Company-wide updates"]];
+    $("#quick-links").innerHTML = links.map(([name, url, desc]) => `<a href="${configured ? url : "https://github.com/"}" target="_blank" rel="noopener"><span class="quick-icon">${name.charAt(0)}</span><span><strong>${name}</strong><small>${desc}</small></span><b>↗</b></a>`).join("");
   }
 
   async function github(path) {
@@ -159,9 +176,10 @@
       if (!event.currentTarget.reportValidity()) return;
       const title = $("#idea-title-input").value.trim();
       const body = `## Problem or opportunity\n${$("#idea-problem").value.trim()}\n\n## Area\n${$("#idea-area").value}\n\n## Submitted by\n${$("#idea-owner").value}\n\n---\nSubmitted from the company operations dashboard.`;
-      const base = configured ? `${repoUrl(repos.ideas)}/issues/new` : "https://github.com/issues/new";
-      window.open(`${base}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}&labels=${encodeURIComponent("idea")}`, "_blank", "noopener");
-      dialog.close(); event.currentTarget.reset(); showToast("Idea prepared in GitHub");
+      const ideasSlug = ((config.discussions || {}).categories || {}).ideas || "ideas";
+      const url = configured ? newDiscussion(ideasSlug, title, body) : "https://github.com/";
+      window.open(url, "_blank", "noopener");
+      dialog.close(); event.currentTarget.reset(); showToast("Idea prepared in GitHub Discussions");
     });
     const tabs = $$("[role=tab]");
     tabs.forEach(tab => tab.addEventListener("click", () => {

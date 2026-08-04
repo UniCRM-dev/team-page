@@ -11,6 +11,17 @@ window.DASHBOARD_CONFIG = {
     projectNumber: 1,
     labels: { priority: "priority", blocker: "blocked", milestone: "milestone", decision: "decision", feedback: "customer-feedback" }
   },
+  discussions: {
+    categories: { announcements: "announcements", ideas: "ideas", polls: "polls", general: "general" }
+  },
+  poll: {
+    question: "Should the partner beta launch in Sprint 09?",
+    options: [
+      { label: "Yes, on target", votes: 3 },
+      { label: "Push to Sprint 10", votes: 1 },
+      { label: "Not ready", votes: 0 }
+    ]
+  },
   schedule: [
     { time: "9:30", period: "AM", title: "Weekly team sync", meta: "Mon · 45 min", tone: "blue" },
     { time: "2:00", period: "PM", title: "Partner discovery", meta: "Wed · Courtney, Chelsey", tone: "teal" },
