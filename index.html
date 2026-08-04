@@ -40,9 +40,6 @@
         <a href="#workstreams">
           <span class="nav-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Team work
         </a>
-        <button type="button" data-dialog="idea-dialog">
-          <span class="nav-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M15.1 14c.2-1 .7-1.7 1.4-2.5A4.7 4.7 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.8 1.2 1.5 1.4 2.5"/></svg></span>Ideas
-        </button>
         <a id="sidebar-notes-link" href="https://github.com/" target="_blank" rel="noopener">
           <span class="nav-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M15 13H9M15 17H9"/></svg></span>Notes
         </a>
@@ -144,6 +141,17 @@
       <article class="panel">
         <div class="panel-heading"><div><p class="kicker">Schedule</p><h2>Upcoming</h2></div><span class="month-label" id="month-label">August</span></div>
         <div class="event-list" id="event-list"></div>
+      </article>
+    </section>
+
+    <section class="section-grid" id="ideas">
+      <article class="panel span-2">
+        <div class="panel-heading"><div><p class="kicker">Idea inbox</p><h2>Ideas</h2></div><a id="ideas-link" href="https://github.com/" target="_blank" rel="noopener">View all <span aria-hidden="true">↗</span></a></div>
+        <div id="idea-list"></div>
+      </article>
+      <article class="panel">
+        <div class="panel-heading"><div><p class="kicker">Company-wide</p><h2>Announcements</h2></div><a id="announcements-link" href="https://github.com/" target="_blank" rel="noopener">All updates <span aria-hidden="true">↗</span></a></div>
+        <div id="announcement-list"></div>
       </article>
     </section>
 

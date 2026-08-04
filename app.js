@@ -13,6 +13,13 @@
   const discussionCategory = slug => `https://github.com/orgs/${owner}/discussions/categories/${slug}`;
   const newDiscussion = (slug, title = "", body = "") => `https://github.com/orgs/${owner}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
   const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
+  const IDEA_STORAGE_KEY = "dashboard-submitted-ideas";
+  function storedIdeas() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(IDEA_STORAGE_KEY) || "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch (error) { return []; }
+  }
 
   function avatar(name) { return `<span class="avatar" title="${escapeHtml(name)}">${escapeHtml(name.slice(0, 2).toUpperCase())}</span>`; }
   function emptyState(message) { return `<p class="empty-state">${escapeHtml(message)}</p>`; }
@@ -52,6 +59,12 @@
     } else {
       $("#poll-options").innerHTML = emptyState("Add a poll in config.js");
     }
+    const cats = (config.discussions && config.discussions.categories) || {};
+    const ideasUrl = configured ? discussionCategory(cats.ideas || "ideas") : "https://github.com/";
+    const announcementUrl = configured ? discussionCategory(cats.announcements || "announcements") : "https://github.com/";
+    const ideas = storedIdeas().concat(config.ideas || []);
+    $("#idea-list").innerHTML = ideas.slice(0, 8).map(idea => `<a class="idea-item" href="${ideasUrl}" target="_blank" rel="noopener"><time>${monthDay(idea.date)}</time><div><h3>${escapeHtml(idea.title)}</h3><p>${escapeHtml(idea.area)}</p><small>Submitted by ${escapeHtml(idea.submittedBy)}</small></div><span class="arrow">↗</span></a>`).join("") || emptyState("Submit an idea and it will show up here.");
+    $("#announcement-list").innerHTML = (config.announcements || []).slice(0, 6).map(announcement => `<a class="announcement-item${announcement.pinned ? " pinned" : ""}" href="${announcementUrl}" target="_blank" rel="noopener"><div><h3>${escapeHtml(announcement.title)}</h3><p>${escapeHtml(announcement.body)}</p><small>${escapeHtml(announcement.author)} · ${monthDay(announcement.date)}</small></div>${announcement.pinned ? '<span class="pill amber">New</span>' : ""}</a>`).join("") || emptyState("Post an update in the announcements category.");
   }
 
   function configureLinks() {
@@ -74,6 +87,8 @@
     const pollsSlug = cats.polls || "polls";
     set("#polls-link", configured ? discussionCategory(pollsSlug) : org);
     set("#new-poll-link", configured ? newDiscussion(pollsSlug) : org);
+    set("#ideas-link", configured ? discussionCategory(cats.ideas || "ideas") : org);
+    set("#announcements-link", configured ? discussionCategory(cats.announcements || "announcements") : org);
     const repositoryLinks = [["Product Core", repos.product], ["Company Ops", repos.operations], ["Sales Pipeline", repos.sales], ["Ideas", repos.ideas]];
     $("#sidebar-repositories").innerHTML = repositoryLinks.map(([name, repo]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="repo-indicator" aria-hidden="true"></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`).join("");
     const links = [["Notes & handbook", repos.operations, "Company context and playbooks"], ["Ideas inbox", cats.ideas ? discussionCategory(cats.ideas) : repos.ideas, "Proposals and opportunities"], ["Customer feedback", repos.sales, "Requests from the field"], ["Announcements", cats.announcements ? discussionCategory(cats.announcements) : org, "Company-wide updates"]];
@@ -179,6 +194,10 @@
       const ideasSlug = ((config.discussions || {}).categories || {}).ideas || "ideas";
       const url = configured ? newDiscussion(ideasSlug, title, body) : "https://github.com/";
       window.open(url, "_blank", "noopener");
+      const submitted = storedIdeas();
+      submitted.unshift({ title, area: $("#idea-area").value, submittedBy: $("#idea-owner").value, date: new Date().toISOString() });
+      try { localStorage.setItem(IDEA_STORAGE_KEY, JSON.stringify(submitted)); } catch (error) { /* storage unavailable */ }
+      renderStaticData();
       dialog.close(); event.currentTarget.reset(); showToast("Idea prepared in GitHub Discussions");
     });
     const tabs = $$("[role=tab]");
