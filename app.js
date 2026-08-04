@@ -91,8 +91,6 @@
     set("#announcements-link", configured ? discussionCategory(cats.announcements || "announcements") : org);
     const repositoryLinks = [["Product Core", repos.product], ["Company Ops", repos.operations], ["Sales Pipeline", repos.sales], ["Ideas", repos.ideas]];
     $("#sidebar-repositories").innerHTML = repositoryLinks.map(([name, repo]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="repo-indicator" aria-hidden="true"></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`).join("");
-    const links = [["Notes & handbook", repos.operations, "Company context and playbooks"], ["Ideas inbox", cats.ideas ? discussionCategory(cats.ideas) : repos.ideas, "Proposals and opportunities"], ["Customer feedback", repos.sales, "Requests from the field"], ["Announcements", cats.announcements ? discussionCategory(cats.announcements) : org, "Company-wide updates"]];
-    $("#quick-links").innerHTML = links.map(([name, url, desc]) => `<a href="${configured ? url : "https://github.com/"}" target="_blank" rel="noopener"><span class="quick-icon">${name.charAt(0)}</span><span><strong>${name}</strong><small>${desc}</small></span><b>↗</b></a>`).join("");
   }
 
   async function github(path) {
