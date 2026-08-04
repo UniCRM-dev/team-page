@@ -58,7 +58,7 @@ Tints and glows are precomputed rather than derived at runtime, so a few tokens 
 
 The theme follows the operating system by default and can be overridden with the toggle in the top bar; the choice persists in `localStorage`. An inline script in `index.html` resolves the theme before first paint so the page never flashes the wrong one.
 
-The design uses system fonts only (no webfonts, no external assets or analytics), supports keyboard navigation, honors reduced-motion preferences, and adapts down to small phone screens.
+The design loads Plus Jakarta Sans from Google Fonts and falls back to the system font stack when the font service is unavailable. It uses no image assets or analytics, supports keyboard navigation, honors reduced-motion preferences, and adapts down to small phone screens.
 
 ## Files
 
