@@ -130,7 +130,6 @@
 
         fetch(workerUrl + "/login", {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: username, password: password })
         })
@@ -140,11 +139,12 @@
             throw new Error(data.error || "Invalid credentials");
           });
         })
-        .then(function () {
+        .then(function (data) {
+          // Store token for authenticated requests
+          try { sessionStorage.setItem("dashboard_token", data.token); } catch (e) {}
           // Redirect to the dashboard (respect ?next= if present and safe)
           var params = new URLSearchParams(location.search);
           var next = params.get("next") || "index.html";
-          // Sanity check — only allow relative paths
           if (/^(?:https?:)?\/\//.test(next) || /^javascript:/i.test(next)) {
             next = "index.html";
           }

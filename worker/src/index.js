@@ -2,14 +2,15 @@
  * UniCRM Dashboard Proxy — Cloudflare Worker
  *
  * Routes:
- *   POST /login        — validate shared password, set signed session cookie
- *   POST /logout       — clear session cookie
- *   GET  /me           — return {user} or 401
- *   GET  /github/*     — proxy to api.github.com  (requires session)
- *   POST /discussions  — create org discussion via GraphQL (requires session)
+ *   POST /login        — validate shared password, return session token
+ *   GET  /me           — return {user} or 401  (token in Authorization header)
+ *   GET  /github/*     — proxy to api.github.com  (token in Authorization header)
+ *   POST /discussions  — create org discussion via GraphQL
  *   OPTIONS *          — CORS preflight
  *
- * No dependencies, no KV, no external services. Stateless HMAC-signed sessions.
+ * No dependencies, no KV, no external services. Stateless HMAC-signed tokens.
+ * Token is returned in the JSON body and sent back as Authorization: Bearer <token>.
+ * This avoids cross-site cookie issues entirely.
  */
 
 export default {
@@ -33,9 +34,6 @@ export default {
     try {
       if (method === "POST" && url.pathname === "/login") {
         return handleLogin(request, env);
-      }
-      if (method === "POST" && url.pathname === "/logout") {
-        return handleLogout(env);
       }
       if (method === "GET" && url.pathname === "/me") {
         return handleMe(request, env);
@@ -68,7 +66,7 @@ function corsHeaders(origin, env) {
   const allowed = allowedOrigins(env);
   const headers = {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
@@ -76,7 +74,6 @@ function corsHeaders(origin, env) {
   const ok = origin && (allowed === null || allowed.includes(origin));
   if (ok) {
     headers["Access-Control-Allow-Origin"] = origin;
-    headers["Access-Control-Allow-Credentials"] = "true";
   }
   return headers;
 }
@@ -94,10 +91,8 @@ function json(data, init) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// Session (stateless HMAC-SHA256)
+// Session (stateless HMAC-SHA256 tokens via Authorization header)
 // ═══════════════════════════════════════════════════════════════════
-
-const SESSION_COOKIE = "dashboard_session";
 
 function parseUsers(env) {
   return (env.ALLOWED_USERS || "Shawn:dev,Jesse:dev,Courtney:sales,Chelsey:sales")
@@ -125,13 +120,8 @@ async function signToken(payload, env) {
   return body + "." + sigB64;
 }
 
-async function verifyCookie(cookieHeader, env) {
-  if (!cookieHeader) return null;
-  const match = cookieHeader.match(
-    new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`)
-  );
-  if (!match) return null;
-  const token = match[1];
+async function verifyToken(token, env) {
+  if (!token) return null;
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [body, sig] = parts;
@@ -150,7 +140,6 @@ async function verifyCookie(cookieHeader, env) {
   const expectedB64 = btoa(String.fromCharCode(...expectedSig))
     .replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
 
-  // Constant-time-ish comparison
   if (sig.length !== expectedB64.length) return null;
   let mismatch = 0;
   for (let i = 0; i < sig.length; i++) {
@@ -170,21 +159,16 @@ async function verifyCookie(cookieHeader, env) {
   }
 }
 
-function setCookie(token, env) {
-  const ttl = parseInt(env.SESSION_TTL_HOURS || "168", 10);
-  const sameSite = env.COOKIE_SAMESITE || "none";
-  return [
-    `${SESSION_COOKIE}=${token}`,
-    "Path=/",
-    "HttpOnly",
-    "Secure",
-    `SameSite=${sameSite}`,
-    `Max-Age=${ttl * 3600}`,
-  ].join("; ");
+// Extract token from Authorization: Bearer <token> header
+function getAuthToken(request) {
+  const auth = request.headers.get("Authorization") || "";
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
 }
 
-function clearCookie() {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; Max-Age=0`;
+// Unified session check — returns {sub, name, role} or null
+async function getSession(request, env) {
+  return verifyToken(getAuthToken(request), env);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -275,15 +259,11 @@ async function handleLogin(request, env) {
     exp: now + ttl * 3600,
   }, env);
 
-  const origin = request.headers.get("Origin");
-  return new Response(JSON.stringify({ ok: true, user: { name: user.name, role: user.role } }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      ...corsHeaders(origin, env),
-      "Set-Cookie": setCookie(token, env),
-    },
-  });
+  // Return token in body — frontend stores in sessionStorage and sends as Authorization header
+  return corsResponse(
+    { ok: true, token, user: { name: user.name, role: user.role } },
+    request, env, 200
+  );
 }
 
 async function verifyPassword(candidate, expected) {
@@ -307,22 +287,11 @@ async function verifyPassword(candidate, expected) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// POST /logout
-// ═══════════════════════════════════════════════════════════════════
-
-async function handleLogout(env) {
-  return new Response(null, {
-    status: 204,
-    headers: { "Set-Cookie": clearCookie() },
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // GET /me
 // ═══════════════════════════════════════════════════════════════════
 
 async function handleMe(request, env) {
-  const session = await verifyCookie(request.headers.get("Cookie"), env);
+  const session = await getSession(request, env);
   if (!session) {
     const origin = request.headers.get("Origin");
     return new Response(JSON.stringify({ error: "Not authenticated" }), {
@@ -345,7 +314,7 @@ async function handleMe(request, env) {
 // ═══════════════════════════════════════════════════════════════════
 
 async function handleGithubProxy(request, env, url) {
-  const session = await verifyCookie(request.headers.get("Cookie"), env);
+  const session = await getSession(request, env);
   if (!session) {
     const origin = request.headers.get("Origin");
     return new Response(JSON.stringify({ error: "Not authenticated" }), {
@@ -408,7 +377,7 @@ async function handleGithubProxy(request, env, url) {
 let _repoCache = null;
 
 async function handleDiscussions(request, env) {
-  const session = await verifyCookie(request.headers.get("Cookie"), env);
+  const session = await getSession(request, env);
   if (!session) {
     const origin = request.headers.get("Origin");
     return new Response(JSON.stringify({ error: "Not authenticated" }), {

@@ -94,6 +94,14 @@
     $("#sidebar-repositories").innerHTML = repositoryLinks.map(([name, repo]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="repo-indicator" aria-hidden="true"></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`).join("");
   }
 
+  function authHeaders() {
+    var token = null;
+    try { token = sessionStorage.getItem("dashboard_token"); } catch (e) {}
+    var headers = { Accept: "application/vnd.github+json" };
+    if (token) headers["Authorization"] = "Bearer " + token;
+    return headers;
+  }
+
   async function github(path) {
     if (!workerUrl) {
       const response = await fetch(`https://api.github.com${path}`, { headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } });
@@ -101,10 +109,10 @@
       return response.json();
     }
     const response = await fetch(`${workerUrl}/github${path}`, {
-      credentials: "include",
-      headers: { Accept: "application/vnd.github+json" }
+      headers: authHeaders()
     });
     if (response.status === 401 && response.headers.get("X-Auth-Required")) {
+      try { sessionStorage.removeItem("dashboard_token"); } catch (e) {}
       location.replace(`${loginPage}?next=${encodeURIComponent(location.pathname + location.search)}`);
       throw new Error("Session expired");
     }
@@ -201,9 +209,11 @@
       let submittedViaApi = false;
       if (workerUrl) {
         try {
+          var headers = authHeaders();
+          headers["Content-Type"] = "application/json";
           const response = await fetch(`${workerUrl}/discussions`, {
-            method: "POST", credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            method: "POST",
+            headers: headers,
             body: JSON.stringify({ title, body, category: ideasSlug })
           });
           if (response.ok) {
@@ -236,8 +246,8 @@
     const signOut = $("#sign-out");
     if (signOut && workerUrl) {
       signOut.hidden = false;
-      signOut.addEventListener("click", async () => {
-        try { await fetch(`${workerUrl}/logout`, { method: "POST", credentials: "include" }); } catch (e) { /* best-effort */ }
+      signOut.addEventListener("click", () => {
+        try { sessionStorage.removeItem("dashboard_token"); } catch (e) {}
         location.replace(loginPage);
       });
     }

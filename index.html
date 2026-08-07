@@ -25,14 +25,20 @@
       var worker = (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.worker || {}).url;
       var login = (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.worker || {}).loginPage || "login.html";
       if (!worker) { document.documentElement.dataset.auth = "ok"; return; }  // open mode
+
+      var token = null;
+      try { token = sessionStorage.getItem("dashboard_token"); } catch (e) {}
+
+      if (!token) { location.replace(login + "?next=" + encodeURIComponent(location.pathname + location.search)); return; }
+
       document.documentElement.dataset.auth = "checking";
       var ctrl = new AbortController();
       var timer = setTimeout(function () { ctrl.abort(); }, 4000);
-      fetch(worker + "/me", { credentials: "include", cache: "no-store", signal: ctrl.signal })
+      fetch(worker + "/me", { headers: { "Authorization": "Bearer " + token }, cache: "no-store", signal: ctrl.signal })
         .then(function (r) {
           clearTimeout(timer);
           if (r.ok) { document.documentElement.dataset.auth = "ok"; return; }
-          if (r.status === 401) { location.replace(login + "?next=" + encodeURIComponent(location.pathname + location.search)); }
+          if (r.status === 401) { try { sessionStorage.removeItem("dashboard_token"); } catch (e) {} location.replace(login + "?next=" + encodeURIComponent(location.pathname + location.search)); }
           else document.documentElement.dataset.auth = "ok";
         })
         .catch(function () {
