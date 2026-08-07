@@ -6,6 +6,8 @@
   const repos = gh.repos || {};
   const labels = gh.labels || {};
   const configured = owner !== "YOUR_GITHUB_ORG";
+  const workerUrl = (config.worker || {}).url || "";
+  const loginPage = (config.worker || {}).loginPage || "login.html";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const repoUrl = repo => `https://github.com/${owner}/${repo}`;
@@ -79,7 +81,6 @@
     set("#issues-link", configured ? `https://github.com/issues?q=${encodeURIComponent(`is:open org:${owner}`)}` : org);
     set("#prs-link", configured ? `https://github.com/pulls?q=${encodeURIComponent(`is:open org:${owner}`)}` : org);
     set("#actions-link", configured ? `${repoUrl(repos.product)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
-    set("#decisions-link", configured ? issuesUrl(repos.operations, "is:issue label:decision") : org);
     set("#sidebar-notes-link", configured ? repoUrl(repos.operations) : org);
     set("#sidebar-wiki-link", configured ? `${repoUrl(repos.operations)}/wiki` : org);
     set("#sidebar-feedback-link", configured ? issuesUrl(repos.sales, "is:open label:customer-feedback") : org);
@@ -94,7 +95,19 @@
   }
 
   async function github(path) {
-    const response = await fetch(`https://api.github.com${path}`, { headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } });
+    if (!workerUrl) {
+      const response = await fetch(`https://api.github.com${path}`, { headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } });
+      if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+      return response.json();
+    }
+    const response = await fetch(`${workerUrl}/github${path}`, {
+      credentials: "include",
+      headers: { Accept: "application/vnd.github+json" }
+    });
+    if (response.status === 401 && response.headers.get("X-Auth-Required")) {
+      location.replace(`${loginPage}?next=${encodeURIComponent(location.pathname + location.search)}`);
+      throw new Error("Session expired");
+    }
     if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
     return response.json();
   }
@@ -110,7 +123,6 @@
     const priorities = all.filter(isPriority);
     const blockers = all.filter(isBlocker);
     const milestones = all.filter(isMilestone).map(issue => ({ issue, at: issue.milestone && issue.milestone.due_on ? new Date(issue.milestone.due_on) : new Date(issue.created_at) })).sort((a, b) => a.at - b.at);
-    const decisions = all.filter(isDecision).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     const devTasks = (byRepo.product || []).filter(issue => !issue.pull_request && !isClassified(issue));
     const salesTasks = (byRepo.sales || []).filter(issue => !issue.pull_request && !isClassified(issue));
 
@@ -138,11 +150,6 @@
       const tone = milestoneLabel ? labelTone(milestoneLabel) : "blue";
       return `<a class="timeline-item" href="${issue.html_url}" target="_blank" rel="noopener"><time><strong>${at.getDate()}</strong><span>${at.toLocaleDateString(undefined, { month: "short" }).toUpperCase()}</span></time><div><h3>${escapeHtml(issue.title)}</h3><p>${escapeHtml(issue.milestone ? issue.milestone.title : issueBody(issue, 70))}</p></div><span class="pill ${tone}">Open</span></a>`;
     }).join("") || emptyState(`Open an issue labeled "${labels.milestone}" to track a milestone.`);
-
-    $("#decision-list").innerHTML = decisions.slice(0, 5).map(issue => {
-      const ownerName = issueOwner(issue);
-      return `<a class="decision-item" href="${issue.html_url}" target="_blank" rel="noopener"><time>${monthDay(issue.created_at)}</time><div><h3>${escapeHtml(issue.title)}</h3><p>${escapeHtml(issueBody(issue, 100))}</p><small>Decided by ${escapeHtml(ownerName)}</small></div><span class="arrow">↗</span></a>`;
-    }).join("") || emptyState(`Open an issue labeled "${labels.decision}" to record a decision.`);
 
     const taskRow = (issue, repo) => {
       const ownerName = issueOwner(issue);
@@ -183,20 +190,40 @@
   function setupInteractions() {
     const dialog = $("#idea-dialog");
     $$('[data-dialog="idea-dialog"]').forEach(button => button.addEventListener("click", () => dialog.showModal()));
-    $("#idea-form").addEventListener("submit", event => {
+    $("#idea-form").addEventListener("submit", async event => {
       if (event.submitter && event.submitter.value === "cancel") return;
       event.preventDefault();
       if (!event.currentTarget.reportValidity()) return;
       const title = $("#idea-title-input").value.trim();
       const body = `## Problem or opportunity\n${$("#idea-problem").value.trim()}\n\n## Area\n${$("#idea-area").value}\n\n## Submitted by\n${$("#idea-owner").value}\n\n---\nSubmitted from the company operations dashboard.`;
       const ideasSlug = ((config.discussions || {}).categories || {}).ideas || "ideas";
-      const url = configured ? newDiscussion(ideasSlug, title, body) : "https://github.com/";
-      window.open(url, "_blank", "noopener");
+
+      let submittedViaApi = false;
+      if (workerUrl) {
+        try {
+          const response = await fetch(`${workerUrl}/discussions`, {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, body, category: ideasSlug })
+          });
+          if (response.ok) {
+            const result = await response.json();
+            submittedViaApi = true;
+            if (result.url) window.open(result.url, "_blank", "noopener");
+            showToast("Idea submitted to GitHub Discussions");
+          }
+        } catch (error) { /* fall through to legacy path below */ }
+      }
+      if (!submittedViaApi) {
+        const url = configured ? newDiscussion(ideasSlug, title, body) : "https://github.com/";
+        window.open(url, "_blank", "noopener");
+        showToast("Idea prepared in GitHub Discussions");
+      }
       const submitted = storedIdeas();
       submitted.unshift({ title, area: $("#idea-area").value, submittedBy: $("#idea-owner").value, date: new Date().toISOString() });
       try { localStorage.setItem(IDEA_STORAGE_KEY, JSON.stringify(submitted)); } catch (error) { /* storage unavailable */ }
       renderStaticData();
-      dialog.close(); event.currentTarget.reset(); showToast("Idea prepared in GitHub Discussions");
+      dialog.close(); event.currentTarget.reset();
     });
     const tabs = $$("[role=tab]");
     tabs.forEach(tab => tab.addEventListener("click", () => {
@@ -204,6 +231,22 @@
     }));
     const navLinks = $$('.side-nav a[href^="#"]');
     navLinks.forEach(link => link.addEventListener("click", () => navLinks.forEach(a => a.classList.toggle("active", a === link))));
+
+    // Show sign-out button when worker auth is active and wire it
+    const signOut = $("#sign-out");
+    if (signOut && workerUrl) {
+      signOut.hidden = false;
+      signOut.addEventListener("click", async () => {
+        try { await fetch(`${workerUrl}/logout`, { method: "POST", credentials: "include" }); } catch (e) { /* best-effort */ }
+        location.replace(loginPage);
+      });
+    }
+
+    // Update idea dialog button text when worker is active (no need to "Continue to GitHub")
+    if (workerUrl) {
+      const submitBtn = $("#submit-idea");
+      if (submitBtn) submitBtn.textContent = "Submit idea";
+    }
   }
   function showToast(message) { const toast = $("#toast"); toast.textContent = message; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2600); }
 

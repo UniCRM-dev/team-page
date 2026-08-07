@@ -1,0 +1,20 @@
+# Cloudflare Worker secrets — copy this to .dev.vars and fill in real values.
+# .dev.vars is gitignored and MUST NEVER be committed.
+
+# Shared dashboard password (all 4 users share this)
+AUTH_PASSWORD = "replace-with-a-strong-password"
+
+# Session signing key — generate with: openssl rand -base64 48
+SESSION_SECRET = "replace-with-a-random-48-byte-base64-string"
+
+# GitHub fine-grained personal access token (or classic PAT with repo scope)
+# Create at: https://github.com/settings/tokens
+# Fine-grained PAT needs: Metadata (read), Issues (read), Pull requests (read),
+#   Actions (read), Contents (read) — on the 4 configured repos.
+# For idea submission via API, add: Discussions (read+write) on the ideas/skills repo.
+GITHUB_TOKEN = "github_pat_..."
+
+# ---- GitHub App (alternative to GITHUB_TOKEN — uncomment all three to use) ----
+# GITHUB_APP_ID = "123456"
+# GITHUB_APP_PRIVATE_KEY = "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+# GITHUB_INSTALLATION_ID = "12345678"

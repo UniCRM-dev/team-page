@@ -1,0 +1,186 @@
+/* ============================================================
+   Login page — standalone sign-in card
+   All colors come from tokens in styles.css.
+   ============================================================ */
+
+body.login {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+
+.login-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 36px 32px 32px;
+}
+
+/* ── Brand ────────────────────────────────────────────────── */
+
+.login-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.login-brand .brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r);
+  background: linear-gradient(135deg, var(--accent), #0891b2);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  box-shadow: 0 12px 28px -12px var(--accent);
+}
+
+/* ── Typography ───────────────────────────────────────────── */
+
+.login-card .eyebrow {
+  text-align: center;
+  margin: 0 0 6px;
+}
+
+.login-card h1 {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.035em;
+  text-align: center;
+}
+
+.login-copy {
+  margin: 0 0 24px;
+  color: var(--text-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── Form ─────────────────────────────────────────────────── */
+
+#login-form label {
+  display: block;
+  margin-top: 14px;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+#login-form select,
+#login-form input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: 13px/1.5 var(--font-ui);
+  outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+#login-form select:focus,
+#login-form input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+#login-form select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 22px;
+}
+
+/* ── Error ────────────────────────────────────────────────── */
+
+.login-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--red-soft);
+  color: var(--red-ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+
+.login-foot {
+  margin: 24px 0 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+/* ── Theme toggle ─────────────────────────────────────────── */
+
+.login-theme-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color .16s ease, border-color .16s ease;
+}
+
+.login-theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.login-theme-toggle .icon-sun,
+.login-theme-toggle .icon-moon {
+  position: absolute;
+  transition: opacity .2s ease, transform .25s ease;
+}
+
+[data-theme="dark"] .login-theme-toggle .icon-sun { opacity: 0; transform: rotate(60deg) scale(.7); }
+[data-theme="dark"] .login-theme-toggle .icon-moon { opacity: 1; transform: none; }
+[data-theme="light"] .login-theme-toggle .icon-sun { opacity: 1; transform: none; }
+[data-theme="light"] .login-theme-toggle .icon-moon { opacity: 0; transform: rotate(-60deg) scale(.7); }
+
+/* ── Reduced motion ───────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-theme-toggle .icon-sun,
+  .login-theme-toggle .icon-moon { transition: none; }
+}
+
+/* ── Small screens ────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 20px 24px;
+  }
+  .login-card h1 {
+    font-size: 21px;
+  }
+}

@@ -1,0 +1,5 @@
+# Cloudflare Workers — secrets and local state
+worker/.dev.vars
+worker/.wrangler/
+.wrangler/
+.env

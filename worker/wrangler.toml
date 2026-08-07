@@ -1,0 +1,11 @@
+name = "unicrm-dashboard-proxy"
+main = "src/index.js"
+compatibility_date = "2026-08-07"
+
+[vars]
+ALLOWED_USERS = "Shawn:dev,Jesse:dev,Courtney:sales,Chelsey:sales"
+ALLOWED_ORIGINS = "https://unicrm-dev.github.io"
+COOKIE_SAMESITE = "none"
+SESSION_TTL_HOURS = "168"
+DISCUSSIONS_OWNER = "UniCRM-dev"
+DISCUSSIONS_REPO = "skills"

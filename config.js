@@ -47,5 +47,9 @@ window.DASHBOARD_CONFIG = {
     { name: "Jesse", role: "Developer", initials: "JE" },
     { name: "Courtney", role: "Sales", initials: "CO" },
     { name: "Chelsey", role: "Sales", initials: "CH" }
-  ]
+  ],
+  worker: {
+    url: "https://unicrm-dashboard-proxy.shawntamez.workers.dev",
+    loginPage: "login.html"
+  }
 };
