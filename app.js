@@ -258,6 +258,135 @@
       if (submitBtn) submitBtn.textContent = "Submit idea";
     }
   }
+
+  // ── Messages ──────────────────────────────────────────────────
+
+  function timeAgo(iso) {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (diff < 1) return "Just now";
+    if (diff < 60) return diff + "m ago";
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return hours + "h ago";
+    const days = Math.floor(hours / 24);
+    if (days < 7) return days + "d ago";
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  async function loadMessages() {
+    if (!workerUrl) return;
+    var container = $("#message-list");
+    var countEl = $("#message-count");
+    var syncNote = $("#message-sync-note");
+    if (!container) return;
+
+    try {
+      var headers = authHeaders();
+      var response = await fetch(workerUrl + "/messages", { headers: headers, cache: "no-store" });
+      if (!response.ok) throw new Error("Messages fetch failed");
+      var data = await response.json();
+      if (!data.messages || !data.messages.length) {
+        container.innerHTML = emptyState("No messages yet — leave one for the team.");
+        if (countEl) countEl.textContent = "0 messages";
+        return;
+      }
+      if (countEl) countEl.textContent = data.messages.length + " message" + (data.messages.length !== 1 ? "s" : "");
+      if (syncNote) syncNote.hidden = false;
+      container.innerHTML = data.messages.map(function (msg) {
+        var roleClass = msg.role === "sales" ? "sales" : "";
+        var initials = (msg.author || "?").slice(0, 2).toUpperCase();
+        var deleteBtn = '<button class="msg-delete" title="Remove message" data-id="' + escapeHtml(msg.id) + '" aria-label="Delete message">×</button>';
+        return '<div class="message-item' + (roleClass ? " " + roleClass : "") + '">'
+          + '<span class="msg-avatar">' + escapeHtml(initials) + '</span>'
+          + '<div class="message-body">'
+          + '<div class="msg-meta"><span class="msg-author">' + escapeHtml(msg.author) + '</span>'
+          + '<span class="msg-role' + (roleClass ? " " + roleClass : "") + '">' + escapeHtml(msg.role) + '</span>'
+          + '<span class="msg-time">' + timeAgo(msg.timestamp) + '</span></div>'
+          + '<p class="msg-text">' + escapeHtml(msg.text) + '</p>'
+          + '</div>'
+          + deleteBtn
+          + '</div>';
+      }).join("");
+
+      // Wire delete buttons
+      $$(".msg-delete", container).forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          deleteMessage(btn.dataset.id, btn.closest(".message-item"));
+        });
+      });
+    } catch (err) {
+      container.innerHTML = emptyState("Could not load messages. Check your connection.");
+    }
+  }
+
+  async function postMessage(text) {
+    if (!workerUrl) return;
+    try {
+      var headers = authHeaders();
+      headers["Content-Type"] = "application/json";
+      var response = await fetch(workerUrl + "/messages", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ text: text })
+      });
+      if (!response.ok) {
+        var data = await response.json().catch(function () { return {}; });
+        throw new Error(data.error || "Failed to send");
+      }
+      loadMessages();
+    } catch (err) {
+      showToast(err.message || "Could not send message. Try again.");
+    }
+  }
+
+  async function deleteMessage(id, element) {
+    if (!workerUrl) return;
+    try {
+      var headers = authHeaders();
+      var response = await fetch(workerUrl + "/messages/" + encodeURIComponent(id), {
+        method: "DELETE",
+        headers: headers
+      });
+      if (!response.ok) {
+        var data = await response.json().catch(function () { return {}; });
+        throw new Error(data.error || "Could not delete message");
+      }
+      if (element) element.remove();
+      loadMessages();  // Refresh the count
+    } catch (err) {
+      showToast(err.message || "Could not delete message.");
+    }
+  }
+
+  function setupMessages() {
+    var form = $("#message-form");
+    var input = $("#message-input");
+    var button = $("#message-submit");
+    if (!form || !workerUrl) return;
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var text = input.value.trim();
+      if (!text) return;
+      button.disabled = true;
+      button.textContent = "Sending…";
+      input.disabled = true;
+      postMessage(text).then(function () {
+        input.value = "";
+        button.disabled = false;
+        button.textContent = "Send";
+        input.disabled = false;
+        input.focus();
+      }).catch(function () {
+        button.disabled = false;
+        button.textContent = "Send";
+        input.disabled = false;
+      });
+    });
+
+    // Load messages immediately
+    loadMessages();
+  }
+
   function showToast(message) { const toast = $("#toast"); toast.textContent = message; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2600); }
 
   function storedTheme() { try { return localStorage.getItem("theme"); } catch (error) { return null; } }
@@ -280,5 +409,5 @@
   $("#today-label").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   $("#hero-greeting").textContent = `Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, team.`;
   $("#month-label").textContent = now.toLocaleDateString(undefined, { month: "long" });
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); loadGitHubData();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); loadGitHubData();
 })();

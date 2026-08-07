@@ -1114,6 +1114,170 @@ textarea { resize: vertical; }
 .toast.show { opacity: 1; transform: none; }
 
 /* ============================================================
+   Messages
+   ============================================================ */
+
+.message-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.message-form input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  margin-top: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: 13px/1.5 var(--font-ui);
+  outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.message-form input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.message-form input::placeholder { color: var(--text-3); }
+
+.message-form .button { flex-shrink: 0; min-height: 44px; }
+
+.message-item {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 14px 10px;
+  margin-inline: -10px;
+  border-radius: var(--r-sm);
+  border-top: 1px solid var(--border);
+  transition: background .14s ease;
+}
+
+.message-item:first-child { border-top: 0; }
+
+.message-item:hover { background: var(--surface-2); }
+
+.message-item .msg-avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.message-item.sales .msg-avatar {
+  background: var(--green-soft);
+  color: var(--green-ink);
+}
+
+.message-body { flex: 1; min-width: 0; }
+
+.message-body .msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.message-body .msg-author {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.message-body .msg-role {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+}
+
+.message-body .msg-role.sales {
+  color: var(--green-ink);
+  background: var(--green-soft);
+}
+
+.message-body .msg-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  margin-left: auto;
+}
+
+.message-body .msg-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.message-item .msg-delete {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .14s ease, background .14s ease, color .14s ease;
+}
+
+.message-item:hover .msg-delete { opacity: 1; }
+
+.message-item .msg-delete:hover {
+  background: var(--red-soft);
+  color: var(--red-ink);
+  border-color: var(--red-soft);
+}
+
+.message-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.message-info-panel { display: flex; flex-direction: column; }
+
+.message-info-text {
+  margin: 0 0 10px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Empty state for messages */
+#message-list .empty-state {
+  padding: 32px 10px;
+  text-align: center;
+}
+
+/* ============================================================
    Responsive
    ============================================================ */
 

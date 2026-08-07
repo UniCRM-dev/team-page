@@ -6,9 +6,12 @@
  *   GET  /me           — return {user} or 401  (token in Authorization header)
  *   GET  /github/*     — proxy to api.github.com  (token in Authorization header)
  *   POST /discussions  — create org discussion via GraphQL
+ *   GET  /messages     — list recent messages
+ *   POST /messages     — post a message
+ *   DELETE /messages/* — delete a message (dev role only)
  *   OPTIONS *          — CORS preflight
  *
- * No dependencies, no KV, no external services. Stateless HMAC-signed tokens.
+ * No external services. Uses KV for messages; HMAC-signed session tokens (stateless).
  * Token is returned in the JSON body and sent back as Authorization: Bearer <token>.
  * This avoids cross-site cookie issues entirely.
  */
@@ -43,6 +46,15 @@ export default {
       }
       if (method === "POST" && url.pathname === "/discussions") {
         return handleDiscussions(request, env);
+      }
+      if (method === "GET" && url.pathname === "/messages") {
+        return handleListMessages(request, env);
+      }
+      if (method === "POST" && url.pathname === "/messages") {
+        return handlePostMessage(request, env);
+      }
+      if (method === "DELETE" && url.pathname.startsWith("/messages/")) {
+        return handleDeleteMessage(request, env, url);
       }
       return json({ error: "Not found" }, { status: 404 });
     } catch (err) {
@@ -171,6 +183,18 @@ async function getSession(request, env) {
   return verifyToken(getAuthToken(request), env);
 }
 
+function notAuthenticated(request, env) {
+  const origin = request.headers.get("Origin");
+  return new Response(JSON.stringify({ error: "Not authenticated" }), {
+    status: 401,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders(origin, env),
+      "X-Auth-Required": "true",
+    },
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // Rate limiting (in-memory, per-isolate — sufficient for 4-person team)
 // ═══════════════════════════════════════════════════════════════════
@@ -292,17 +316,7 @@ async function verifyPassword(candidate, expected) {
 
 async function handleMe(request, env) {
   const session = await getSession(request, env);
-  if (!session) {
-    const origin = request.headers.get("Origin");
-    return new Response(JSON.stringify({ error: "Not authenticated" }), {
-      status: 401,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders(origin, env),
-        "X-Auth-Required": "true",
-      },
-    });
-  }
+  if (!session) return notAuthenticated(request, env);
   return corsResponse(
     { ok: true, user: { name: session.name, role: session.role } },
     request, env, 200
@@ -315,17 +329,7 @@ async function handleMe(request, env) {
 
 async function handleGithubProxy(request, env, url) {
   const session = await getSession(request, env);
-  if (!session) {
-    const origin = request.headers.get("Origin");
-    return new Response(JSON.stringify({ error: "Not authenticated" }), {
-      status: 401,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders(origin, env),
-        "X-Auth-Required": "true",
-      },
-    });
-  }
+  if (!session) return notAuthenticated(request, env);
 
   // Extract the path after /github
   const ghPath = url.pathname.slice("/github".length) + url.search;
@@ -378,17 +382,7 @@ let _repoCache = null;
 
 async function handleDiscussions(request, env) {
   const session = await getSession(request, env);
-  if (!session) {
-    const origin = request.headers.get("Origin");
-    return new Response(JSON.stringify({ error: "Not authenticated" }), {
-      status: 401,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders(origin, env),
-        "X-Auth-Required": "true",
-      },
-    });
-  }
+  if (!session) return notAuthenticated(request, env);
 
   const token = await getGithubToken(env);
   if (!token) {
@@ -501,6 +495,117 @@ async function graphql(query, variables, token) {
     body: JSON.stringify({ query, variables }),
   });
   return response.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Messages — stored in Cloudflare Workers KV
+// ═══════════════════════════════════════════════════════════════════
+
+const MESSAGES_MAX = 50;
+
+async function handleListMessages(request, env) {
+  const session = await getSession(request, env);
+  if (!session) {
+    return notAuthenticated(request, env);
+  }
+
+  if (!env.MESSAGES) {
+    return corsResponse({ error: "KV store not configured" }, request, env, 502);
+  }
+
+  try {
+    const list = await env.MESSAGES.list({ prefix: "msg:", limit: MESSAGES_MAX });
+    const messages = [];
+    for (const key of list.keys) {
+      const value = await env.MESSAGES.get(key.name);
+      if (value) {
+        try { messages.push(JSON.parse(value)); } catch { /* skip corrupted entries */ }
+      }
+    }
+    // Messages are stored with timestamp in key, so list order is chronological ascending.
+    // Reverse so newest is first.
+    messages.reverse();
+    return corsResponse({ ok: true, messages }, request, env, 200);
+  } catch (err) {
+    console.error("Messages list error:", err.message);
+    return corsResponse({ error: "Could not list messages" }, request, env, 500);
+  }
+}
+
+async function handlePostMessage(request, env) {
+  const session = await getSession(request, env);
+  if (!session) {
+    return notAuthenticated(request, env);
+  }
+
+  if (!env.MESSAGES) {
+    return corsResponse({ error: "KV store not configured" }, request, env, 502);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return corsResponse({ error: "Invalid JSON body" }, request, env, 400);
+  }
+
+  const text = (body.text || "").trim();
+  if (!text || text.length > 600) {
+    return corsResponse({ error: "Message text is required (max 600 characters)" }, request, env, 400);
+  }
+
+  const now = new Date();
+  // Key format: msg:<iso-timestamp>-<random> — sorts chronologically
+  const key = `msg:${now.toISOString()}-${Math.random().toString(36).slice(2, 8)}`;
+  const message = {
+    id: key,
+    author: session.name,
+    role: session.role,
+    text,
+    timestamp: now.toISOString(),
+  };
+
+  try {
+    await env.MESSAGES.put(key, JSON.stringify(message));
+    return corsResponse({ ok: true, message }, request, env, 201);
+  } catch (err) {
+    console.error("Messages put error:", err.message);
+    return corsResponse({ error: "Could not save message" }, request, env, 500);
+  }
+}
+
+async function handleDeleteMessage(request, env, url) {
+  const session = await getSession(request, env);
+  if (!session) {
+    return notAuthenticated(request, env);
+  }
+
+  // Only developers can delete messages (light moderation)
+  if (session.role !== "dev") {
+    return corsResponse({ error: "Only developers can remove messages" }, request, env, 403);
+  }
+
+  if (!env.MESSAGES) {
+    return corsResponse({ error: "KV store not configured" }, request, env, 502);
+  }
+
+  // Extract the message key from the URL path: /messages/msg:2024-...-abc123
+  const key = url.pathname.slice("/messages/".length);
+  if (!key) {
+    return corsResponse({ error: "Message ID is required" }, request, env, 400);
+  }
+
+  try {
+    const existing = await env.MESSAGES.get(key);
+    if (!existing) {
+      return corsResponse({ error: "Message not found" }, request, env, 404);
+    }
+    await env.MESSAGES.delete(key);
+    return corsResponse({ ok: true }, request, env, 200);
+  } catch (err) {
+    console.error("Messages delete error:", err.message);
+    return corsResponse({ error: "Could not delete message" }, request, env, 500);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
