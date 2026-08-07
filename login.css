@@ -4,11 +4,14 @@
    ============================================================ */
 
 body.login {
+  min-height: 100vh;
   min-height: 100dvh;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: safe center;
+  justify-content: safe center;
   padding: 24px;
   background: var(--bg);
+  overflow-y: auto;
 }
 
 .login-wrapper {
@@ -178,51 +181,54 @@ body.login {
 
 @media (max-width: 480px) {
   body.login {
-    padding: 16px;
-    align-items: start;
-    min-height: 100dvh;
+    padding: 12px;
+    align-items: flex-start;
+    min-height: 100vh;
+    min-height: 100svh;
   }
 
   .login-wrapper {
     max-width: 100%;
+    width: 100%;
   }
 
   .login-card {
-    padding: 24px 18px 20px;
+    padding: 20px 16px 18px;
+    border-radius: var(--r);
   }
 
   .login-brand {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .login-brand .brand-mark {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
   }
 
   .login-card h1 {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .login-copy {
     font-size: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
   .login-submit {
-    margin-top: 16px;
+    margin-top: 14px;
   }
 
   .login-foot {
-    margin-top: 16px;
+    margin-top: 14px;
     font-size: 11px;
   }
 
   .login-theme-toggle {
-    top: 8px;
-    right: 8px;
-    width: 40px;
-    height: 40px;
+    top: 6px;
+    right: 6px;
+    width: 36px;
+    height: 36px;
   }
 }

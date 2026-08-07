@@ -314,7 +314,7 @@
         });
       });
     } catch (err) {
-      container.innerHTML = emptyState("Could not load messages. Check your connection.");
+      container.innerHTML = emptyState("Messages unavailable — the worker may need redeploying with the KV namespace.");
     }
   }
 
