@@ -50,6 +50,9 @@ export default {
       if (method === "POST" && url.pathname === "/discussions") {
         return handleDiscussions(request, env);
       }
+      if (method === "GET" && url.pathname === "/projects") {
+        return handleProjectsCount(request, env);
+      }
       if (method === "GET" && url.pathname === "/messages") {
         return handleListMessages(request, env);
       }
@@ -507,6 +510,40 @@ async function graphql(query, variables, token) {
     body: JSON.stringify({ query, variables }),
   });
   return response.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Projects — count of org Projects (Projects v2) for the status strip
+// ═══════════════════════════════════════════════════════════════════
+
+async function handleProjectsCount(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  const owner = env.DISCUSSIONS_OWNER || "UniCRM-dev";
+  const query = `query {
+    organization(login: "${owner}") {
+      projectsV2(first: 100) { totalCount }
+    }
+  }`;
+
+  try {
+    const result = await graphql(query, {}, token);
+    if (result.errors) {
+      console.error("Projects count error:", result.errors[0].message);
+      return corsResponse({ error: "Could not count projects" }, request, env, 502);
+    }
+    const count = result.data.organization.projectsV2.totalCount;
+    return corsResponse({ ok: true, count }, request, env);
+  } catch (err) {
+    console.error("Projects count fetch failed:", err.message);
+    return corsResponse({ error: "Could not count projects" }, request, env, 502);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════

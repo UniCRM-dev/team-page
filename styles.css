@@ -490,7 +490,7 @@ main > *,
 
 .status-strip {
   display: grid;
-  grid-template-columns: 1.45fr repeat(4, 1fr);
+  grid-template-columns: 1.45fr repeat(5, 1fr);
   margin-top: 18px;
   background: var(--surface);
   border: 1px solid var(--border);

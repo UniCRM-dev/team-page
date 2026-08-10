@@ -90,7 +90,7 @@
     set("#new-poll-link", configured ? newDiscussion(pollsSlug) : org);
     set("#ideas-link", configured ? discussionCategory(cats.ideas || "ideas") : org);
     set("#announcements-link", configured ? discussionCategory(cats.announcements || "announcements") : org);
-    const repositoryLinks = [["Product Core", repos.product], ["Company Ops", repos.operations], ["Sales Pipeline", repos.sales], ["Ideas", repos.ideas]];
+    const repositoryLinks = [["Skills", repos.ideas]];
     $("#sidebar-repositories").innerHTML = repositoryLinks.map(([name, repo]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="repo-indicator" aria-hidden="true"></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`).join("");
   }
 
@@ -136,10 +136,6 @@
 
     $("#priority-count").textContent = priorities.length;
     $("#blocker-count").textContent = blockers.length;
-    if (milestones[0]) {
-      $("#next-milestone-date").textContent = milestones[0].at.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-      $("#next-milestone-note").textContent = milestones[0].issue.title;
-    }
 
     $("#priority-list").innerHTML = priorities.slice(0, 8).map((issue, i) => {
       const ownerName = issueOwner(issue);
@@ -173,13 +169,20 @@
   async function loadGitHubData() {
     if (!configured || !repos.product) return;
     const keys = ["product", "operations", "sales", "ideas"];
+    const projectsPromise = workerUrl
+      ? fetch(workerUrl + "/projects", { headers: authHeaders(), cache: "no-store" })
+          .then(r => (r.ok ? r.json() : null))
+          .catch(() => null)
+      : Promise.resolve(null);
     try {
-      const [results, repo, pulls, releases, runs] = await Promise.all([
+      const [results, repo, pulls, releases, runs, orgRepos, projects] = await Promise.all([
         Promise.all(keys.map(key => github(`/repos/${owner}/${repos[key]}/issues?state=open&per_page=100&sort=updated&direction=desc`))),
         github(`/repos/${owner}/${repos.product}`),
         github(`/repos/${owner}/${repos.product}/pulls?state=open&per_page=100`),
         github(`/repos/${owner}/${repos.product}/releases?per_page=1`),
-        github(`/repos/${owner}/${repos.product}/actions/runs?per_page=1`)
+        github(`/repos/${owner}/${repos.product}/actions/runs?per_page=1`),
+        github(`/orgs/${owner}/repos?per_page=100`),
+        projectsPromise
       ]);
       const byRepo = {}; keys.forEach((key, index) => { byRepo[key] = results[index]; });
       renderLiveData(byRepo);
@@ -188,6 +191,9 @@
       $("#pr-note").textContent = `${pulls.filter(p => p.requested_reviewers && p.requested_reviewers.length).length} waiting review`;
       if (releases[0]) { $("#latest-release").textContent = releases[0].tag_name; $("#release-note").textContent = new Date(releases[0].published_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
       if (runs.workflow_runs && runs.workflow_runs[0]) { const ok = runs.workflow_runs[0].conclusion === "success"; $("#build-health").innerHTML = `<i></i> ${ok ? "Passing" : "Needs attention"}`; $("#build-health").classList.toggle("failed", !ok); $("#build-note").textContent = runs.workflow_runs[0].name; }
+      $("#repo-count").textContent = (orgRepos && orgRepos.length) || "—";
+      const projectCount = projects && projects.ok ? projects.count : null;
+      $("#project-count").textContent = projectCount !== null && projectCount !== undefined ? String(projectCount) : "—";
       $("#sync-state").innerHTML = "<i></i> Live from GitHub"; $("#sync-state").classList.add("live");
       $("#last-updated").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     } catch (error) {
