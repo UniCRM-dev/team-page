@@ -497,10 +497,42 @@
     }
   }
 
-  function docGroup(name, files) {
-    if (!files.length) return "";
-    return '<div class="doc-directory-group"><p class="doc-directory-name">' + escapeHtml(name) + '</p>'
-      + files.map(renderFileItem).join("") + '</div>';
+  var FOLDER_CHEVRON_SVG = '<svg class="doc-tree-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>';
+  var FOLDER_ICON_SVG = '<svg class="doc-tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+
+  function docFolder(name, count, body) {
+    return '<details class="doc-folder">'
+      + '<summary>' + FOLDER_CHEVRON_SVG + FOLDER_ICON_SVG + '<span class="doc-tree-name">' + escapeHtml(name) + '</span>'
+      + '<span class="doc-tree-count">' + count + '</span></summary>'
+      + '<div class="doc-folder-children">' + body + '</div>'
+      + '</details>';
+  }
+
+  function renderDocTree(folder, rootFiles, directories, dirResults) {
+    var children = "";
+
+    // Subfolders — collapsed by default; each shows its files when expanded
+    directories.forEach(function (dir, i) {
+      var files = (dirResults[i].entries || []).filter(isListedFile);
+      var body = files.length
+        ? files.map(renderFileItem).join("")
+        : '<p class="doc-tree-empty">Empty folder</p>';
+      children += docFolder(dir.name, files.length, body);
+    });
+
+    // Files directly in the docs/ root, listed under the root node
+    children += rootFiles.map(renderFileItem).join("");
+
+    var totalFiles = rootFiles.length
+      + directories.reduce(function (sum, dir, i) {
+          return sum + (dirResults[i].entries || []).filter(isListedFile).length;
+        }, 0);
+
+    return '<details class="doc-folder doc-folder-root" open>'
+      + '<summary>' + FOLDER_CHEVRON_SVG + FOLDER_ICON_SVG + '<span class="doc-tree-name">' + escapeHtml(folder) + '</span>'
+      + '<span class="doc-tree-count">' + directories.length + ' folders · ' + totalFiles + ' files</span></summary>'
+      + '<div class="doc-folder-children">' + children + '</div>'
+      + '</details>';
   }
 
   async function loadDocuments() {
@@ -530,8 +562,6 @@
       var directories = entries.filter(function (entry) { return entry.type === "dir"; });
       var rootFiles = entries.filter(isListedFile);
 
-      var html = docGroup(folder + " (root)", rootFiles);
-
       // Fetch each subdirectory's contents so files are grouped under their folder
       var dirResults = await Promise.all(directories.map(function (dir) {
         return fetch(workerUrl + "/documents?path=" + encodeURIComponent(dir.path), { headers: headers, cache: "no-store" })
@@ -539,12 +569,7 @@
           .catch(function () { return { entries: [] }; });
       }));
 
-      directories.forEach(function (dir, i) {
-        var files = (dirResults[i].entries || []).filter(isListedFile);
-        html += docGroup(dir.path, files);
-      });
-
-      container.innerHTML = html || emptyState("No documents found.");
+      container.innerHTML = renderDocTree(folder, rootFiles, directories, dirResults);
     } catch (err) {
       container.innerHTML = emptyState("Documents unavailable — the worker may need redeploying with document routes.");
     }

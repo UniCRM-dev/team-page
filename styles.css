@@ -1437,6 +1437,77 @@ textarea { resize: vertical; }
   transition: color .14s ease;
 }
 
+/* Document directory tree */
+.doc-folder {
+  border-radius: var(--r-sm);
+}
+.doc-folder summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  transition: background .14s ease;
+}
+.doc-folder summary::-webkit-details-marker { display: none; }
+.doc-folder summary:hover { background: var(--hover-wash); }
+.doc-folder[open] > summary { background: var(--surface-2); }
+.doc-folder-root > summary { font-weight: 700; font-size: 13.5px; }
+
+.doc-tree-chevron {
+  flex-shrink: 0;
+  color: var(--text-3);
+  transition: transform .15s ease;
+}
+.doc-folder[open] > summary .doc-tree-chevron { transform: rotate(90deg); }
+
+.doc-tree-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.doc-tree-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-tree-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 1px 9px;
+  white-space: nowrap;
+}
+
+.doc-folder-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 6px 13px;
+  padding-left: 13px;
+  border-left: 1px solid var(--border);
+}
+
+.doc-tree-empty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--text-3);
+}
+
 /* Directory picker (upload dialog) */
 .dir-picker {
   display: flex;
