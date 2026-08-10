@@ -352,8 +352,9 @@ async function handleGithubProxy(request, env, url) {
   // Extract the path after /github
   const ghPath = url.pathname.slice("/github".length) + url.search;
 
-  // Path allowlist — only /repos/* for GET
-  if (!ghPath.startsWith("/repos/")) {
+  // Path allowlist — /repos/* plus org repo listings for GET
+  const isAllowedPath = ghPath.startsWith("/repos/") || /^\/orgs\/[^/]+\/repos(\?|$)/.test(ghPath);
+  if (!isAllowedPath) {
     return json({ error: "Forbidden: only /repos/* paths are proxied" }, { status: 403 });
   }
 
