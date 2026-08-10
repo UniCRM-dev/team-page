@@ -9,6 +9,9 @@ COOKIE_SAMESITE = "none"
 SESSION_TTL_HOURS = "168"
 DISCUSSIONS_OWNER = "UniCRM-dev"
 DISCUSSIONS_REPO = "skills"
+DOCUMENTS_OWNER = "UniCRM-dev"
+DOCUMENTS_REPO = "wiki"
+DOCUMENTS_FOLDER = "docs"
 
 [[kv_namespaces]]
 binding = "MESSAGES"

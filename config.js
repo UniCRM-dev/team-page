@@ -6,13 +6,18 @@ window.DASHBOARD_CONFIG = {
       product: "portal",
       operations: "wiki",
       sales: "web",
-      ideas: "skills"
+      ideas: "skills",
+      documents: "wiki"
     },
     projectNumber: 1,
     labels: { priority: "priority", blocker: "blocked", milestone: "milestone", decision: "decision", feedback: "customer-feedback" }
   },
   discussions: {
     categories: { announcements: "announcements", ideas: "ideas", polls: "polls", general: "general" }
+  },
+  documents: {
+    repo: "wiki",
+    folder: "docs"
   },
   poll: {
     question: "Should the partner beta launch in Sprint 09?",

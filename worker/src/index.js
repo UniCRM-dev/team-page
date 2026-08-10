@@ -9,6 +9,9 @@
  *   GET  /messages     — list recent messages
  *   POST /messages     — post a message
  *   DELETE /messages/* — delete a message (dev role only)
+ *   GET  /documents    — list files/folders under the documents folder
+ *   POST /documents    — upload a file to the documents repo
+ *   GET  /documents/download?path= — stream a file (private, session-gated)
  *   OPTIONS *          — CORS preflight
  *
  * No external services. Uses KV for messages; HMAC-signed session tokens (stateless).
@@ -56,6 +59,15 @@ export default {
       if (method === "DELETE" && url.pathname.startsWith("/messages/")) {
         return handleDeleteMessage(request, env, url);
       }
+      if (method === "GET" && url.pathname === "/documents") {
+        return handleListDocuments(request, env, url);
+      }
+      if (method === "GET" && url.pathname === "/documents/download") {
+        return handleDownloadDocument(request, env, url);
+      }
+      if (method === "POST" && url.pathname === "/documents") {
+        return handleUploadDocument(request, env);
+      }
       return json({ error: "Not found" }, { status: 404 });
     } catch (err) {
       console.error("Worker error:", err.message);
@@ -77,7 +89,7 @@ function allowedOrigins(env) {
 function corsHeaders(origin, env) {
   const allowed = allowedOrigins(env);
   const headers = {
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
@@ -605,6 +617,250 @@ async function handleDeleteMessage(request, env, url) {
   } catch (err) {
     console.error("Messages delete error:", err.message);
     return corsResponse({ error: "Could not delete message" }, request, env, 500);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Documents — list, upload, download (wiki repo /docs folder)
+// ═══════════════════════════════════════════════════════════════════
+
+function documentsConfig(env) {
+  return {
+    owner: env.DOCUMENTS_OWNER || "UniCRM-dev",
+    repo: env.DOCUMENTS_REPO || "wiki",
+    folder: (env.DOCUMENTS_FOLDER || "docs").replace(/^\/+|\/+$/g, ""),
+  };
+}
+
+// Encode each path segment individually so slashes survive encoding
+function encodePath(path) {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+// Strip leading/trailing slashes and reject anything that escapes the base folder
+function sanitizePath(path) {
+  const cleaned = (path || "").replace(/^\/+|\/+$/g, "");
+  if (!cleaned || cleaned.includes("..")) return null;
+  return cleaned;
+}
+
+// ── GET /documents?path=docs/… — list one level of the folder ──
+
+async function handleListDocuments(request, env, url) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  const cfg = documentsConfig(env);
+  const requested = sanitizePath(url.searchParams.get("path")) || cfg.folder;
+  if (!requested) {
+    return corsResponse({ error: "Invalid path" }, request, env, 400);
+  }
+
+  try {
+    const ghResponse = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodePath(requested)}`,
+      {
+        method: "GET",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Authorization": `Bearer ${token}`,
+          "User-Agent": "unicrm-dashboard-proxy",
+        },
+        redirect: "follow",
+      }
+    );
+
+    // Folder doesn't exist yet — treat as empty
+    if (ghResponse.status === 404) {
+      return corsResponse({ ok: true, entries: [], path: requested }, request, env, 200);
+    }
+    if (!ghResponse.ok) {
+      throw new Error(`GitHub returned ${ghResponse.status}`);
+    }
+
+    const data = await ghResponse.json();
+    const entries = (Array.isArray(data) ? data : [data]).map(entry => ({
+      name: entry.name,
+      path: entry.path,
+      type: entry.type, // "dir" | "file"
+      size: entry.size || 0,
+    }));
+
+    return corsResponse({ ok: true, entries, path: requested }, request, env, 200);
+  } catch (err) {
+    console.error("List documents error:", err.message);
+    return corsResponse({ error: "Could not list documents" }, request, env, 502);
+  }
+}
+
+// ── POST /documents — upload a file (base64 body) ──
+
+async function handleUploadDocument(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return corsResponse({ error: "Invalid JSON body" }, request, env, 400);
+  }
+
+  const { path, filename, content } = body;
+  const cleanPath = sanitizePath(path);
+  const cleanName = (filename || "").trim().replace(/^\/+/, "");
+  if (!cleanPath || !cleanName || cleanName.includes("/") || cleanName.includes("..")) {
+    return corsResponse({ error: "path and filename are required" }, request, env, 400);
+  }
+  if (!content || typeof content !== "string") {
+    return corsResponse({ error: "content is required" }, request, env, 400);
+  }
+
+  const cfg = documentsConfig(env);
+  // Accept a directory path with or without the base-folder prefix (docs/finance or finance)
+  const subPath = cleanPath === cfg.folder ? "" : cleanPath.replace(new RegExp("^" + cfg.folder + "/"), "");
+  const fullPath = [cfg.folder, subPath, cleanName].filter(Boolean).join("/");
+
+  try {
+    const ghResponse = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodePath(fullPath)}`,
+      {
+        method: "PUT",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "User-Agent": "unicrm-dashboard-proxy",
+        },
+        body: JSON.stringify({
+          message: `Upload ${cleanName}`,
+          content,
+          committer: {
+            name: session.name,
+            email: `${session.name.toLowerCase().replace(/[^a-z0-9]/g, "")}@users.noreply.github.com`,
+          },
+        }),
+      }
+    );
+
+    const result = await ghResponse.json().catch(() => ({}));
+
+    if (!ghResponse.ok) {
+      // 409 = the file already exists (need the current sha to overwrite)
+      if (ghResponse.status === 409) {
+        return corsResponse(
+          { error: `"${cleanName}" already exists in that folder. Rename the file or choose another folder.` },
+          request, env, 409
+        );
+      }
+      throw new Error(result.message || `GitHub returned ${ghResponse.status}`);
+    }
+
+    return corsResponse(
+      {
+        ok: true,
+        file: {
+          name: (result.content && result.content.name) || cleanName,
+          path: (result.content && result.content.path) || fullPath,
+          size: (result.content && result.content.size) || 0,
+        },
+      },
+      request, env, 201
+    );
+  } catch (err) {
+    console.error("Upload document error:", err.message);
+    return corsResponse({ error: err.message || "Could not upload document" }, request, env, 502);
+  }
+}
+
+// ── GET /documents/download?path=docs/… — stream a private file to a session ──
+
+const VIEWABLE_EXTENSIONS = new Set(["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "txt", "md", "csv"]);
+
+function contentTypeFor(name) {
+  const ext = name.split(".").pop().toLowerCase();
+  const types = {
+    pdf: "application/pdf",
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
+    webp: "image/webp", svg: "image/svg+xml",
+    txt: "text/plain", md: "text/markdown", csv: "text/csv",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ppt: "application/vnd.ms-powerpoint",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    zip: "application/zip",
+  };
+  return types[ext] || "application/octet-stream";
+}
+
+function contentDispositionFor(name) {
+  const sanitized = name.replace(/["\\]/g, "").replace(/[\x00-\x1f]/g, "");
+  const ext = name.split(".").pop().toLowerCase();
+  const disposition = VIEWABLE_EXTENSIONS.has(ext) ? "inline" : "attachment";
+  return `${disposition}; filename="${sanitized}"`;
+}
+
+async function handleDownloadDocument(request, env, url) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  const cfg = documentsConfig(env);
+  const requested = sanitizePath(url.searchParams.get("path"));
+  if (!requested || (requested !== cfg.folder && !requested.startsWith(cfg.folder + "/"))) {
+    return corsResponse({ error: "Invalid path" }, request, env, 400);
+  }
+
+  const fileName = requested.split("/").pop();
+
+  try {
+    const ghResponse = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodePath(requested)}`,
+      {
+        method: "GET",
+        headers: {
+          "Accept": "application/vnd.github.raw",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Authorization": `Bearer ${token}`,
+          "User-Agent": "unicrm-dashboard-proxy",
+        },
+        redirect: "follow",
+      }
+    );
+
+    if (!ghResponse.ok) {
+      return corsResponse({ error: "Could not download file" }, request, env, ghResponse.status);
+    }
+
+    const headers = new Headers();
+    const origin = request.headers.get("Origin");
+    Object.assign(headers, corsHeaders(origin, env));
+    headers.set("Content-Type", ghResponse.headers.get("Content-Type") || contentTypeFor(fileName));
+    headers.set("Content-Disposition", contentDispositionFor(fileName));
+    headers.set("Cache-Control", "private, max-age=300");
+
+    return new Response(ghResponse.body, { status: 200, headers });
+  } catch (err) {
+    console.error("Download document error:", err.message);
+    return corsResponse({ error: "Could not download file" }, request, env, 502);
   }
 }
 

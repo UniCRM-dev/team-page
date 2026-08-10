@@ -387,6 +387,251 @@
     loadMessages();
   }
 
+  // ── Documents ──────────────────────────────────────────────────
+
+  function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return "0 B";
+    var units = ["B", "KB", "MB", "GB"];
+    var i = Math.floor(Math.log(bytes) / Math.log(1024));
+    if (i > 3) i = 3;
+    return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + " " + units[i];
+  }
+
+  function renderFileItem(file) {
+    return '<a class="doc-file-item" href="' + escapeHtml(workerUrl + "/documents/download?path=" + encodeURIComponent(file.path)) + '" target="_blank" rel="noopener">'
+      + '<span class="doc-file-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>'
+      + '<span class="doc-file-info"><strong class="doc-file-name">' + escapeHtml(file.name) + '</strong><small class="doc-file-meta">' + formatFileSize(file.size) + '</small></span>'
+      + '<span class="doc-file-download">Download <span aria-hidden="true">↗</span></span>'
+      + '</a>';
+  }
+
+  function docGroup(name, files) {
+    if (!files.length) return "";
+    return '<div class="doc-directory-group"><p class="doc-directory-name">' + escapeHtml(name) + '</p>'
+      + files.map(renderFileItem).join("") + '</div>';
+  }
+
+  async function loadDocuments() {
+    var container = $("#document-list");
+    if (!container) return;
+    if (!workerUrl) {
+      container.innerHTML = emptyState("Documents are available when the worker proxy is configured.");
+      return;
+    }
+    var docConfig = config.documents || {};
+    var folder = docConfig.folder || "docs";
+
+    container.innerHTML = emptyState("Loading documents…");
+
+    try {
+      var headers = authHeaders();
+      var response = await fetch(workerUrl + "/documents?path=" + encodeURIComponent(folder), { headers: headers, cache: "no-store" });
+      if (!response.ok) throw new Error("Documents fetch failed");
+      var data = await response.json();
+      var entries = data.entries || [];
+
+      if (!entries.length) {
+        container.innerHTML = emptyState("No documents yet — upload one to get started.");
+        return;
+      }
+
+      var directories = entries.filter(function (entry) { return entry.type === "dir"; });
+      var rootFiles = entries.filter(function (entry) { return entry.type === "file"; });
+
+      var html = docGroup(folder + " (root)", rootFiles);
+
+      // Fetch each subdirectory's contents so files are grouped under their folder
+      var dirResults = await Promise.all(directories.map(function (dir) {
+        return fetch(workerUrl + "/documents?path=" + encodeURIComponent(dir.path), { headers: headers, cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : { entries: [] }; })
+          .catch(function () { return { entries: [] }; });
+      }));
+
+      directories.forEach(function (dir, i) {
+        var files = (dirResults[i].entries || []).filter(function (entry) { return entry.type === "file"; });
+        html += docGroup(dir.path, files);
+      });
+
+      container.innerHTML = html || emptyState("No documents found.");
+    } catch (err) {
+      container.innerHTML = emptyState("Documents unavailable — the worker may need redeploying with document routes.");
+    }
+  }
+
+  function setupDocuments() {
+    if (!workerUrl) return;
+
+    var dialog = $("#upload-dialog");
+    var form = $("#upload-form");
+    var dirPicker = $("#dir-picker");
+    var fileStep = $("#upload-step-file");
+    var fileDropZone = $("#file-drop-zone");
+    var fileInput = $("#file-input");
+    var fileDropText = $("#file-drop-text");
+    var fileSelected = $("#file-selected");
+    var destLabel = $("#upload-dest-label");
+    var submitBtn = $("#submit-upload");
+    var progressStep = $("#upload-step-progress");
+    var uploadStatus = $("#upload-status");
+    var progressBar = $("#upload-progress-bar");
+    var docConfig = config.documents || {};
+    var folder = docConfig.folder || "docs";
+    var selectedDir = null;
+
+    function selectDir(dirPath) {
+      selectedDir = dirPath;
+      $$(".dir-option", dirPicker).forEach(function (btn) {
+        btn.setAttribute("aria-current", btn.dataset.dir === dirPath ? "true" : "false");
+      });
+      destLabel.textContent = dirPath ? "/" + dirPath : "";
+      fileStep.hidden = false;
+      updateSubmitState();
+    }
+
+    function updateSubmitState() {
+      submitBtn.disabled = !(selectedDir && fileInput.files && fileInput.files.length > 0);
+    }
+
+    function handleFileSelected(file) {
+      if (!file) { updateSubmitState(); return; }
+      fileSelected.hidden = false;
+      fileSelected.textContent = file.name + " · " + formatFileSize(file.size);
+      fileDropText.textContent = file.name;
+      updateSubmitState();
+    }
+
+    function resetDialog() {
+      selectedDir = null;
+      fileInput.value = "";
+      fileInput.files = new DataTransfer().files;
+      fileStep.hidden = true;
+      progressStep.hidden = true;
+      progressBar.value = 0;
+      fileSelected.hidden = true;
+      fileDropText.textContent = "Drag a file here or click to browse";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Upload";
+    }
+
+    async function loadDirOptions() {
+      dirPicker.innerHTML = '<button type="button" class="dir-option" disabled>Loading directories…</button>';
+      try {
+        var headers = authHeaders();
+        var response = await fetch(workerUrl + "/documents?path=" + encodeURIComponent(folder), { headers: headers, cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to load directories");
+        var data = await response.json();
+        var dirs = (data.entries || []).filter(function (entry) { return entry.type === "dir"; });
+
+        var html = '<button type="button" class="dir-option dir-option-root" data-dir="' + escapeHtml(folder) + '">' + escapeHtml(folder) + " (root)</button>";
+        html += dirs.map(function (dir) {
+          return '<button type="button" class="dir-option" data-dir="' + escapeHtml(dir.path) + '">' + escapeHtml(dir.name) + '</button>';
+        }).join("");
+
+        dirPicker.innerHTML = html;
+        $$(".dir-option", dirPicker).forEach(function (btn) {
+          btn.addEventListener("click", function () { selectDir(btn.dataset.dir); });
+        });
+        selectDir(folder);  // default to the docs/ root
+      } catch (err) {
+        dirPicker.innerHTML = '<button type="button" class="dir-option" disabled>Could not load directories — try again.</button>';
+      }
+    }
+
+    // Open the dialog and load the directory list
+    $$('[data-dialog="upload-dialog"]').forEach(function (button) {
+      button.addEventListener("click", function () {
+        resetDialog();
+        dialog.showModal();
+        loadDirOptions();
+      });
+    });
+
+    // File drop zone: click or drag-and-drop
+    fileDropZone.addEventListener("click", function () { fileInput.click(); });
+    fileDropZone.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); fileInput.click(); }
+    });
+    ["dragenter", "dragover"].forEach(function (name) {
+      fileDropZone.addEventListener(name, function (event) { event.preventDefault(); fileDropZone.classList.add("dragover"); });
+    });
+    ["dragleave", "drop"].forEach(function (name) {
+      fileDropZone.addEventListener(name, function (event) { event.preventDefault(); fileDropZone.classList.remove("dragover"); });
+    });
+    fileDropZone.addEventListener("drop", function (event) {
+      var files = event.dataTransfer && event.dataTransfer.files;
+      if (files && files.length) {
+        fileInput.files = files;
+        handleFileSelected(files[0]);
+      }
+    });
+    fileInput.addEventListener("change", function () { handleFileSelected(fileInput.files && fileInput.files[0]); });
+
+    // Upload
+    form.addEventListener("submit", function (event) {
+      if (event.submitter && event.submitter.value === "cancel") return;
+      event.preventDefault();
+      var file = fileInput.files && fileInput.files[0];
+      if (!file || !selectedDir) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Uploading…";
+      fileStep.hidden = true;
+      progressStep.hidden = false;
+      uploadStatus.textContent = "Reading file…";
+
+      var reader = new FileReader();
+      reader.onprogress = function (e) {
+        if (e.lengthComputable) progressBar.value = Math.round((e.loaded / e.total) * 100);
+      };
+      reader.onload = function () {
+        var base64 = String(reader.result).split(",")[1];
+        if (!base64) {
+          showToast("Could not read the file. Try again.");
+          resetDialog();
+          dialog.close();
+          return;
+        }
+        uploadStatus.textContent = "Uploading…";
+        progressBar.removeAttribute("value");  // indeterminate while the request is in flight
+
+        var headers = authHeaders();
+        headers["Content-Type"] = "application/json";
+        fetch(workerUrl + "/documents", {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({ path: selectedDir, filename: file.name, content: base64 })
+        })
+          .then(function (response) {
+            if (response.ok) return response.json();
+            return response.json().then(function (data) {
+              throw new Error(data.error || "Upload failed");
+            });
+          })
+          .then(function () {
+            showToast("File uploaded successfully");
+            dialog.close();
+            form.reset();
+            loadDocuments();
+          })
+          .catch(function (err) {
+            showToast(err.message || "Could not upload file. Check your connection.");
+            dialog.close();
+          });
+      };
+      reader.onerror = function () {
+        showToast("Could not read the file. Try again.");
+        resetDialog();
+        dialog.close();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset state whenever the dialog closes (cancel, submit, backdrop)
+    dialog.addEventListener("close", resetDialog);
+
+    loadDocuments();
+  }
+
   function showToast(message) { const toast = $("#toast"); toast.textContent = message; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2600); }
 
   function storedTheme() { try { return localStorage.getItem("theme"); } catch (error) { return null; } }
@@ -409,5 +654,5 @@
   $("#today-label").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   $("#hero-greeting").textContent = `Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, team.`;
   $("#month-label").textContent = now.toLocaleDateString(undefined, { month: "long" });
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); loadGitHubData();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); loadGitHubData();
 })();

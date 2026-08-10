@@ -1345,3 +1345,206 @@ textarea { resize: vertical; }
   .button:active,
   .metric-cards > a:active { transform: none; }
 }
+
+/* ============================================================
+   Documents
+   ============================================================ */
+
+#document-list .empty-state {
+  padding: 28px 10px;
+  text-align: center;
+}
+
+.doc-directory-group {
+  margin-top: 18px;
+}
+.doc-directory-group:first-child {
+  margin-top: 0;
+}
+
+.doc-directory-name {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.doc-file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-inline: -12px;
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  color: var(--text);
+  transition: background .14s ease;
+}
+.doc-file-item + .doc-file-item {
+  border-top: 1px solid var(--border);
+}
+.doc-file-item:hover {
+  background: var(--hover-wash);
+}
+.doc-file-item:hover .doc-file-download {
+  color: var(--accent);
+}
+
+.doc-file-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.doc-file-info {
+  flex: 1;
+  min-width: 0;
+}
+.doc-file-info strong,
+.doc-file-info small {
+  display: block;
+}
+.doc-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doc-file-meta {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.doc-file-download {
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-3);
+  transition: color .14s ease;
+}
+
+/* Directory picker (upload dialog) */
+.dir-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.dir-option {
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: 500 12.5px/1 var(--font-ui);
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
+}
+.dir-option:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.dir-option[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Upload dialog steps */
+.upload-step + .upload-step {
+  margin-top: 16px;
+}
+.upload-dest-label {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* File drop zone */
+.file-drop-zone {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 22px 16px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--text-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease;
+}
+.file-drop-zone:hover,
+.file-drop-zone:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+.file-drop-zone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: var(--ring);
+}
+.file-drop-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.file-drop-zone p {
+  margin: 0;
+  font-size: 12.5px;
+}
+.file-drop-zone .form-note {
+  background: transparent;
+  padding: 0;
+  color: var(--text-3);
+}
+
+/* Upload progress */
+.upload-progress {
+  display: grid;
+  gap: 6px;
+}
+.upload-progress span {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+progress {
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--surface-sunk);
+  appearance: none;
+}
+progress::-webkit-progress-bar {
+  background: var(--surface-sunk);
+  border-radius: var(--r-full);
+}
+progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: var(--r-full);
+  transition: width .2s ease;
+}
+progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: var(--r-full);
+}
