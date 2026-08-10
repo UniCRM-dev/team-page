@@ -780,11 +780,10 @@
       container.innerHTML = data.events.map(function (e) {
         var start = new Date(e.start);
         var showTime = !e.allDay;
-        var timeHTML = showTime
-          ? '<time><strong>' + start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + '</strong><span>' + start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + '</span></time>'
-          : '<time><strong>' + start.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + '</strong><span>All day</span></time>';
-        var meta = [e.location, e.description].filter(Boolean).join(" · ");
-        return '<div class="event-item"><time><strong>' + start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + '</strong><span>' + (showTime ? start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "All day") + '</span></time><div><h3>' + escapeHtml(e.summary) + '</h3>' + (meta ? '<p>' + escapeHtml(meta) + '</p>' : '') + '</div></div>';
+        var when = start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+          + (showTime ? " · " + start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
+        var meta = [when, e.location, e.description].filter(Boolean).join(" · ");
+        return '<div class="event-item"><time><strong>' + start.getDate() + '</strong><span>' + start.toLocaleDateString(undefined, { month: "short" }).toUpperCase() + '</span></time><div><h3>' + escapeHtml(e.summary) + '</h3><p>' + escapeHtml(meta) + '</p></div></div>';
       }).join("");
     } catch (err) {
       container.innerHTML = emptyState("Calendar events unavailable.");
