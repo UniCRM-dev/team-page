@@ -397,6 +397,10 @@
     return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + " " + units[i];
   }
 
+  function isListedFile(entry) {
+    return entry.type === "file" && entry.name.toLowerCase() !== "index.md";
+  }
+
   function renderFileItem(file) {
     return '<a class="doc-file-item" href="' + escapeHtml(workerUrl + "/documents/download?path=" + encodeURIComponent(file.path)) + '" target="_blank" rel="noopener">'
       + '<span class="doc-file-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>'
@@ -436,7 +440,7 @@
       }
 
       var directories = entries.filter(function (entry) { return entry.type === "dir"; });
-      var rootFiles = entries.filter(function (entry) { return entry.type === "file"; });
+      var rootFiles = entries.filter(isListedFile);
 
       var html = docGroup(folder + " (root)", rootFiles);
 
@@ -448,7 +452,7 @@
       }));
 
       directories.forEach(function (dir, i) {
-        var files = (dirResults[i].entries || []).filter(function (entry) { return entry.type === "file"; });
+        var files = (dirResults[i].entries || []).filter(isListedFile);
         html += docGroup(dir.path, files);
       });
 
