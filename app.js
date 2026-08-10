@@ -81,9 +81,9 @@
     set("#github-org-link", org); set("#new-task-link", configured ? `${repoUrl(repos.operations)}/issues/new` : "https://github.com/issues");
     set("#priorities-link", project); set("#blockers-link", configured ? issuesUrl(repos.operations, "is:open label:blocked") : org);
     set("#milestones-link", project); set("#dev-board-link", project); set("#sales-board-link", project);
-    set("#issues-link", configured ? `https://github.com/issues?q=${encodeURIComponent(`is:open org:${owner}`)}` : org);
-    set("#prs-link", configured ? `https://github.com/pulls?q=${encodeURIComponent(`is:open org:${owner}`)}` : org);
-    set("#actions-link", configured ? `${repoUrl(repos.product)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
+    set("#issues-link", configured ? `${repoUrl(repos.operations)}/issues` : org);
+    set("#prs-link", configured ? `${repoUrl(repos.operations)}/pulls` : org);
+    set("#actions-link", configured ? `${repoUrl(repos.operations)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
     set("#sidebar-notes-link", configured ? repoUrl(repos.operations) : org);
     set("#sidebar-wiki-link", configured ? `${repoUrl(repos.operations)}/wiki` : org);
     set("#sidebar-feedback-link", configured ? issuesUrl(repos.sales, "is:open label:customer-feedback") : org);
@@ -180,10 +180,10 @@
     try {
       const [results, repo, pulls, releases, runs, orgRepos, projects] = await Promise.all([
         Promise.all(keys.map(key => github(`/repos/${owner}/${repos[key]}/issues?state=open&per_page=100&sort=updated&direction=desc`))),
-        github(`/repos/${owner}/${repos.product}`),
-        github(`/repos/${owner}/${repos.product}/pulls?state=open&per_page=100`),
+        github(`/repos/${owner}/${repos.operations}`),
+        github(`/repos/${owner}/${repos.operations}/pulls?state=open&per_page=100`),
         github(`/repos/${owner}/${repos.product}/releases?per_page=1`),
-        github(`/repos/${owner}/${repos.product}/actions/runs?per_page=1`),
+        github(`/repos/${owner}/${repos.operations}/actions/runs?per_page=1`),
         github(`/orgs/${owner}/repos?per_page=100`),
         projectsPromise
       ]);
@@ -193,6 +193,7 @@
       $("#open-prs").textContent = pulls.length;
       $("#pr-note").textContent = `${pulls.filter(p => p.requested_reviewers && p.requested_reviewers.length).length} waiting review`;
       if (releases[0]) { $("#latest-release").textContent = releases[0].tag_name; $("#release-note").textContent = new Date(releases[0].published_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+      else { $("#latest-release").textContent = "—"; $("#release-note").textContent = "No releases yet"; }
       if (runs.workflow_runs && runs.workflow_runs[0]) { const ok = runs.workflow_runs[0].conclusion === "success"; $("#build-health").innerHTML = `<i></i> ${ok ? "Passing" : "Needs attention"}`; $("#build-health").classList.toggle("failed", !ok); $("#build-note").textContent = runs.workflow_runs[0].name; }
       $("#repo-count").textContent = (orgRepos && orgRepos.length) || "—";
       const projectCount = projects && projects.ok ? projects.count : null;
