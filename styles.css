@@ -780,6 +780,14 @@ a:hover > .arrow { color: var(--accent); }
 
 .work-section { margin-top: 18px; overflow: hidden; }
 
+/* Compact variant: Workstreams sits in the priorities grid (span-2 slot) */
+.priorities-grid .work-section { grid-column: span 2; margin-top: 0; }
+.priorities-grid .work-header { padding: 16px 20px; gap: 14px; }
+.priorities-grid .tab-panel { padding: 20px; }
+.priorities-grid .metric-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
+.priorities-grid .metric-cards strong { font-size: 20px; }
+.priorities-grid .work-summary { margin-bottom: 14px; }
+
 .work-header {
   display: flex;
   align-items: center;

@@ -86,7 +86,7 @@
     set("#actions-link", configured ? `${repoUrl(repos.operations)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
     set("#sidebar-notes-link", configured ? repoUrl(repos.operations) : org);
     set("#sidebar-wiki-link", configured ? `${repoUrl(repos.operations)}/wiki` : org);
-    set("#sidebar-feedback-link", configured ? issuesUrl(repos.sales, "is:open label:customer-feedback") : org);
+    set("#sidebar-web-link", configured ? repoUrl(repos.sales) : org);
     const cats = (config.discussions && config.discussions.categories) || {};
     const pollsSlug = cats.polls || "polls";
     set("#polls-link", configured ? discussionCategory(pollsSlug) : org);
