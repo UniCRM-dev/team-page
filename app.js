@@ -824,7 +824,28 @@
   const now = new Date();
   const hour = now.getHours();
   $("#today-label").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  $("#hero-greeting").textContent = `Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, team.`;
+  function setGreeting(name) {
+    var first = (name || "team").trim().split(/\s+/)[0] || "team";
+    $("#hero-greeting").textContent = `Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, ${first}.`;
+  }
+  function loadSessionUser() {
+    var token = null;
+    try { token = sessionStorage.getItem("dashboard_token"); } catch (e) {}
+    if (!token || !workerUrl) return;
+    fetch(`${workerUrl}/me`, { headers: authHeaders() })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data && data.user && data.user.name) {
+          try { sessionStorage.setItem("dashboard_user", data.user.name); } catch (e) {}
+          setGreeting(data.user.name);
+        }
+      })
+      .catch(() => {});
+  }
+  var savedUser = null;
+  try { savedUser = sessionStorage.getItem("dashboard_user"); } catch (e) {}
+  setGreeting(savedUser);
+  loadSessionUser();
   var monthLabel = $("#month-label");
   if (monthLabel) monthLabel.textContent = now.toLocaleDateString(undefined, { month: "long" });
   setupCalendar();

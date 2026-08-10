@@ -140,8 +140,9 @@
           });
         })
         .then(function (data) {
-          // Store token for authenticated requests
+          // Store token for authenticated requests, plus the user's name for the greeting
           try { sessionStorage.setItem("dashboard_token", data.token); } catch (e) {}
+          try { sessionStorage.setItem("dashboard_user", (data.user && data.user.name) || ""); } catch (e) {}
           // Redirect to the dashboard (respect ?next= if present and safe)
           var params = new URLSearchParams(location.search);
           var next = params.get("next") || "index.html";
