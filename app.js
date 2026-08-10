@@ -47,7 +47,10 @@
 
   function renderStaticData() {
     const schedule = config.schedule || [];
-    $("#event-list").innerHTML = schedule.map(e => `<div class="event-item ${e.tone}"><time><strong>${escapeHtml(e.time)}</strong><span>${escapeHtml(e.period)}</span></time><div><h3>${escapeHtml(e.title)}</h3><p>${escapeHtml(e.meta)}</p></div></div>`).join("") || emptyState("Add upcoming events in config.js");
+    var eventList = $("#event-list");
+    if (eventList) {
+      eventList.innerHTML = schedule.map(e => `<div class="event-item ${e.tone}"><time><strong>${escapeHtml(e.time)}</strong><span>${escapeHtml(e.period)}</span></time><div><h3>${escapeHtml(e.title)}</h3><p>${escapeHtml(e.meta)}</p></div></div>`).join("") || emptyState("Add upcoming events in config.js");
+    }
     const pipeline = config.pipeline || [];
     $("#pipeline-bars").innerHTML = pipeline.map(([name, count, width]) => `<div class="pipeline-row"><span>${escapeHtml(name)}</span><div><i style="width:${width}%"></i></div><b>${count}</b></div>`).join("") || emptyState("Configure pipeline stages in config.js");
     const poll = config.poll || {};
@@ -765,6 +768,17 @@
   const hour = now.getHours();
   $("#today-label").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   $("#hero-greeting").textContent = `Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, team.`;
-  $("#month-label").textContent = now.toLocaleDateString(undefined, { month: "long" });
+  var monthLabel = $("#month-label");
+  if (monthLabel) monthLabel.textContent = now.toLocaleDateString(undefined, { month: "long" });
+  var calCopyBtn = $("#cal-ical-copy-btn");
+  var calIcalUrl = $("#cal-ical-url");
+  if (calCopyBtn && calIcalUrl) {
+    calCopyBtn.addEventListener("click", function () {
+      calIcalUrl.select();
+      document.execCommand("copy");
+      calCopyBtn.textContent = "Copied!";
+      setTimeout(function () { calCopyBtn.textContent = "Copy"; }, 1800);
+    });
+  }
   setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); loadGitHubData();
 })();
