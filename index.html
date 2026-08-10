@@ -335,6 +335,23 @@
     </form>
   </dialog>
 
+  <dialog id="doc-viewer-dialog" aria-labelledby="doc-viewer-title">
+    <div class="doc-viewer-wrap">
+      <div class="dialog-heading">
+        <div><p class="kicker">Documents</p><h2 id="doc-viewer-title">Document</h2></div>
+        <button class="icon-button" type="button" id="doc-viewer-close" aria-label="Close viewer">×</button>
+      </div>
+      <p class="dialog-copy" id="doc-viewer-meta"></p>
+      <div class="doc-viewer-body" id="doc-viewer-body">
+        <p class="form-note">Loading…</p>
+      </div>
+      <div class="dialog-actions">
+        <button class="button button-secondary" type="button" id="doc-viewer-close-btn">Close</button>
+        <button class="button button-primary" type="button" id="doc-viewer-download">Download</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>

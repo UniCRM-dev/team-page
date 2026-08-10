@@ -856,12 +856,16 @@ async function handleDownloadDocument(request, env, url) {
       return corsResponse({ error: "Could not download file" }, request, env, ghResponse.status);
     }
 
-    const headers = new Headers();
+    // Build a plain-object headers dict (like corsResponse does) — Object.assign
+    // onto a Headers instance silently drops the CORS headers, which makes the
+    // browser block the download.
     const origin = request.headers.get("Origin");
-    Object.assign(headers, corsHeaders(origin, env));
-    headers.set("Content-Type", ghResponse.headers.get("Content-Type") || contentTypeFor(fileName));
-    headers.set("Content-Disposition", contentDispositionFor(fileName));
-    headers.set("Cache-Control", "private, max-age=300");
+    const headers = {
+      ...corsHeaders(origin, env),
+      "Content-Type": ghResponse.headers.get("Content-Type") || contentTypeFor(fileName),
+      "Content-Disposition": contentDispositionFor(fileName),
+      "Cache-Control": "private, max-age=300",
+    };
 
     return new Response(ghResponse.body, { status: 200, headers });
   } catch (err) {

@@ -402,35 +402,89 @@
   }
 
   function renderFileItem(file) {
-    // A plain <a> can't attach the session token, so downloads go through
-    // downloadDocument() which fetches with auth and hands the browser a blob.
-    return '<button type="button" class="doc-file-item" data-download-path="' + escapeHtml(file.path) + '">'
+    // A plain <a> can't attach the session token, so files open via
+    // openDocument(), which fetches with auth and shows them in the viewer dialog.
+    return '<button type="button" class="doc-file-item" data-download-path="' + escapeHtml(file.path) + '" data-size="' + (file.size || 0) + '">'
       + '<span class="doc-file-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>'
       + '<span class="doc-file-info"><strong class="doc-file-name">' + escapeHtml(file.name) + '</strong><small class="doc-file-meta">' + formatFileSize(file.size) + '</small></span>'
-      + '<span class="doc-file-download">Download <span aria-hidden="true">↗</span></span>'
+      + '<span class="doc-file-download">View <span aria-hidden="true">↗</span></span>'
       + '</button>';
   }
 
-  async function downloadDocument(path) {
+  // ── Document viewer ─────────────────────────────────────────────
+  var viewerUrl = null;
+  var viewerName = null;
+
+  function viewerPreviewType(name) {
+    var ext = (name.split(".").pop() || "").toLowerCase();
+    if (["png", "jpg", "jpeg", "gif", "webp", "svg"].indexOf(ext) !== -1) return "image";
+    if (ext === "pdf") return "pdf";
+    if (["txt", "md", "csv", "log"].indexOf(ext) !== -1) return "text";
+    return "other";
+  }
+
+  function viewerCleanup() {
+    if (viewerUrl) {
+      URL.revokeObjectURL(viewerUrl);
+      viewerUrl = null;
+      viewerName = null;
+    }
+  }
+
+  function viewerDownload() {
+    if (!viewerUrl || !viewerName) return;
+    var a = document.createElement("a");
+    a.href = viewerUrl;
+    a.download = viewerName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function viewerClose() {
+    var viewer = $("#doc-viewer-dialog");
+    if (viewer && viewer.open) viewer.close();
+    viewerCleanup();
+  }
+
+  async function openDocument(path, size) {
     if (!workerUrl) return;
+    var viewer = $("#doc-viewer-dialog");
+    var body = $("#doc-viewer-body");
+    var meta = $("#doc-viewer-meta");
+    var title = $("#doc-viewer-title");
+    if (!viewer || !body || !meta || !title) return;
+
+    var name = path.split("/").pop() || "document";
+    title.textContent = name;
+    meta.textContent = size ? formatFileSize(size) : "";
+    body.innerHTML = '<p class="form-note">Loading…</p>';
+    viewer.showModal();
+
     try {
       var response = await fetch(workerUrl + "/documents/download?path=" + encodeURIComponent(path), { headers: authHeaders(), cache: "no-store" });
       if (!response.ok) {
-        var body = await response.json().catch(function () { return {}; });
-        showToast(body.error || "Download failed");
+        var err = await response.json().catch(function () { return {}; });
+        body.innerHTML = emptyState(err.error || "Could not load file");
         return;
       }
       var blob = await response.blob();
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = path.split("/").pop() || "document";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      viewerUrl = URL.createObjectURL(blob);
+      viewerName = name;
+
+      var type = viewerPreviewType(name);
+      if (type === "image") {
+        body.innerHTML = '<img class="doc-viewer-img" src="' + viewerUrl + '" alt="' + escapeHtml(name) + '">';
+      } else if (type === "pdf") {
+        body.innerHTML = '<iframe class="doc-viewer-frame" src="' + viewerUrl + '" title="' + escapeHtml(name) + '"></iframe>';
+      } else if (type === "text") {
+        var text = await blob.text();
+        body.innerHTML = '<pre class="doc-viewer-text">' + escapeHtml(text) + '</pre>';
+      } else {
+        body.innerHTML = emptyState("No preview for ." + escapeHtml((name.split(".").pop() || "file")) + " files — use Download to save it.");
+      }
     } catch (err) {
-      showToast("Download failed");
+      body.innerHTML = emptyState("Could not load file");
     }
   }
 
@@ -514,8 +568,20 @@
         var row = e.target.closest ? e.target.closest("[data-download-path]") : null;
         if (!row) return;
         e.preventDefault();
-        downloadDocument(row.getAttribute("data-download-path"));
+        openDocument(row.getAttribute("data-download-path"), parseInt(row.getAttribute("data-size"), 10) || 0);
       });
+    }
+
+    // Viewer dialog controls
+    var viewer = $("#doc-viewer-dialog");
+    if (viewer) {
+      var viewerCloseBtn = $("#doc-viewer-close");
+      var viewerCloseBtn2 = $("#doc-viewer-close-btn");
+      var viewerDownloadBtn = $("#doc-viewer-download");
+      if (viewerCloseBtn) viewerCloseBtn.addEventListener("click", viewerClose);
+      if (viewerCloseBtn2) viewerCloseBtn2.addEventListener("click", viewerClose);
+      if (viewerDownloadBtn) viewerDownloadBtn.addEventListener("click", viewerDownload);
+      viewer.addEventListener("close", viewerCleanup);
     }
 
     function selectDir(dirPath) {
