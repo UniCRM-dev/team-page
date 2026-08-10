@@ -121,8 +121,8 @@ function json(data, init) {
 function parseUsers(env) {
   return (env.ALLOWED_USERS || "Shawn:dev,Jesse:dev,Courtney:sales,Chelsey:sales")
     .split(",").map(s => s.trim()).filter(Boolean).map(entry => {
-      const [name, role] = entry.split(":").map(p => p.trim());
-      return { name, role: role || "dev" };
+      const [name, role, login, id] = entry.split(":").map(p => p.trim());
+      return { name, role: role || "dev", login: login || null, id: id ? Number(id) : null };
     });
 }
 
@@ -732,6 +732,15 @@ async function handleUploadDocument(request, env) {
   const subPath = cleanPath === cfg.folder ? "" : cleanPath.replace(new RegExp("^" + cfg.folder + "/"), "");
   const fullPath = [cfg.folder, subPath, cleanName].filter(Boolean).join("/");
 
+  // Sessions carry display names, not GitHub identities, so attribute uploads
+  // to the uploader's real account via GitHub's private noreply format
+  // (id+login@users.noreply.github.com — links the commit without exposing
+  // their email). Fall back to a team identity for users without one.
+  const uploader = parseUsers(env).find(u => u.name.toLowerCase() === session.name.toLowerCase());
+  const committer = uploader && uploader.id && uploader.login
+    ? { name: session.name, email: `${uploader.id}+${uploader.login}@users.noreply.github.com` }
+    : { name: "UniCRM Team Page", email: "team-page@users.noreply.github.com" };
+
   try {
     const ghResponse = await fetch(
       `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodePath(fullPath)}`,
@@ -745,12 +754,9 @@ async function handleUploadDocument(request, env) {
           "User-Agent": "unicrm-dashboard-proxy",
         },
         body: JSON.stringify({
-          message: `Upload ${cleanName}`,
+          message: `Upload ${cleanName} (by ${session.name})`,
           content,
-          committer: {
-            name: session.name,
-            email: `${session.name.toLowerCase().replace(/[^a-z0-9]/g, "")}@users.noreply.github.com`,
-          },
+          committer,
         }),
       }
     );
