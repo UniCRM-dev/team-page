@@ -15,6 +15,7 @@ DISCUSSIONS_REPO = "skills"
 DOCUMENTS_OWNER = "UniCRM-dev"
 DOCUMENTS_REPO = "wiki"
 DOCUMENTS_FOLDER = "docs"
+GOOGLE_CALENDAR_ICAL_URL = "https://calendar.google.com/calendar/ical/c904e3f42d1e308d05e775a11b1d36d0193b25621b7fc66f649a60b9353920ed%40group.calendar.google.com/private-e4616b686d65afd5e271d7f24bdb60d0/basic.ics"
 
 [[kv_namespaces]]
 binding = "MESSAGES"

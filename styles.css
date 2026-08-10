@@ -1600,18 +1600,12 @@ progress::-moz-progress-bar {
 #doc-viewer-dialog .dialog-actions { margin-top: 18px; }
 
 /* ============================================================
-   Calendar embed
+   Calendar
    ============================================================ */
-.cal-embed-wrap {
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  overflow: hidden;
-  background: var(--surface-2);
-}
-.cal-embed-wrap iframe {
-  display: block;
-  width: 100%;
-  border: 0;
+.side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 .cal-link {
   font-size: 12.5px;
@@ -1620,32 +1614,5 @@ progress::-moz-progress-bar {
   transition: color .14s ease;
 }
 .cal-link:hover { color: var(--accent); }
-.cal-subscribe {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--text-2);
-}
-.cal-subscribe summary {
-  cursor: pointer;
-  font-weight: 500;
-  color: var(--text-1);
-  font-size: 12.5px;
-}
-.cal-subscribe p { margin-top: 8px; }
-.cal-ical-copy {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.cal-ical-copy input {
-  flex: 1;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
+#cal-events-list .event-item:first-child { border-top: 0; }
+#cal-events-panel .panel-heading { margin-bottom: 0; }

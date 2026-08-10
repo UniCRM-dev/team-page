@@ -161,35 +161,27 @@
         <div class="panel-heading"><div><p class="kicker">Focus</p><h2>Active priorities</h2></div><a id="priorities-link" href="https://github.com/issues" target="_blank" rel="noopener">View project <span aria-hidden="true">↗</span></a></div>
         <div class="priority-list" id="priority-list"></div>
       </article>
-      <article class="panel attention-panel">
-        <div class="panel-heading"><div><p class="kicker">Attention</p><h2>Blockers</h2></div><a id="blockers-link" href="https://github.com/issues" target="_blank" rel="noopener">View all</a></div>
-        <div id="blocker-list"></div>
-      </article>
+      <div class="side-stack">
+        <article class="panel attention-panel">
+          <div class="panel-heading"><div><p class="kicker">Attention</p><h2>Blockers</h2></div><a id="blockers-link" href="https://github.com/issues" target="_blank" rel="noopener">View all</a></div>
+          <div id="blocker-list"></div>
+        </article>
+        <article class="panel" id="cal-events-panel">
+          <div class="panel-heading">
+            <div><p class="kicker">Schedule</p><h2>Upcoming</h2></div>
+            <a class="cal-link" href="https://calendar.google.com/calendar/embed?src=c904e3f42d1e308d05e775a11b1d36d0193b25621b7fc66f649a60b9353920ed%40group.calendar.google.com&ctz=America%2FChicago" target="_blank" rel="noopener">Open <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="event-list" id="cal-events-list">
+            <div class="event-item"><time><strong>—</strong></time><div><h3>Loading calendar…</h3></div></div>
+          </div>
+        </article>
+      </div>
     </section>
 
     <section class="section-grid" id="calendar">
       <article class="panel span-2">
         <div class="panel-heading"><div><p class="kicker">Forward look</p><h2>Milestones &amp; deadlines</h2></div><a id="milestones-link" href="https://github.com/issues" target="_blank" rel="noopener">Full roadmap <span aria-hidden="true">↗</span></a></div>
         <div class="timeline" id="milestone-list"></div>
-      </article>
-      <article class="panel span-2">
-        <div class="panel-heading">
-          <div><p class="kicker">Schedule</p><h2>Calendar</h2></div>
-          <span>
-            <a class="cal-link" href="https://calendar.google.com/calendar/embed?src=c904e3f42d1e308d05e775a11b1d36d0193b25621b7fc66f649a60b9353920ed%40group.calendar.google.com&ctz=America%2FChicago" target="_blank" rel="noopener">Open <span aria-hidden="true">↗</span></a>
-          </span>
-        </div>
-        <div class="cal-embed-wrap">
-          <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=America%2FChicago&mode=AGENDA&showPrint=0&showTitle=0&showCalendars=0&src=YzkwNGUzZjQyZDFlMzA4ZDA1ZTc3NWExMWIxZDM2ZDAxOTNiMjU2MjFiN2ZjNjZmNjQ5YTYwYjkzNTM5MjBlZEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&src=ZW4udXNhI2hvbGlkYXlAZ3JvdXAudi5jYWxlbmRhci5nb29nbGUuY29t&color=%23c0ca33&color=%237986cb" width="100%" height="520"></iframe>
-        </div>
-        <details class="cal-subscribe">
-          <summary>Sync to your calendar app</summary>
-          <p>Copy this iCal link into Apple Calendar, Outlook, or Google Calendar (<em>Other calendars → From URL</em>):</p>
-          <div class="cal-ical-copy">
-            <input type="text" readonly id="cal-ical-url" value="https://calendar.google.com/calendar/ical/c904e3f42d1e308d05e775a11b1d36d0193b25621b7fc66f649a60b9353920ed%40group.calendar.google.com/public/basic.ics">
-            <button class="button button-secondary button-small" type="button" id="cal-ical-copy-btn">Copy</button>
-          </div>
-        </details>
       </article>
     </section>
 

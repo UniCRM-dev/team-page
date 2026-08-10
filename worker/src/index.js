@@ -53,6 +53,9 @@ export default {
       if (method === "GET" && url.pathname === "/projects") {
         return handleProjectsCount(request, env);
       }
+      if (method === "GET" && url.pathname === "/calendar/events") {
+        return handleCalendarEvents(request, env);
+      }
       if (method === "GET" && url.pathname === "/messages") {
         return handleListMessages(request, env);
       }
@@ -543,6 +546,115 @@ async function handleProjectsCount(request, env) {
   } catch (err) {
     console.error("Projects count fetch failed:", err.message);
     return corsResponse({ error: "Could not count projects" }, request, env, 502);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Calendar – iCal feed proxy (parses public Google Calendar feed)
+// ═══════════════════════════════════════════════════════════════════
+
+function parseICalDate(dateStr) {
+  // Handles: 20260810T140000Z  or  20260810T140000  or  20260810
+  var isAllDay = false;
+  if (dateStr && dateStr.indexOf("VALUE=DATE") === 0) {
+    isAllDay = true;
+    dateStr = dateStr.slice("VALUE=DATE:".length);
+  } else if (dateStr && dateStr.indexOf(":") !== -1) {
+    dateStr = dateStr.slice(dateStr.indexOf(":") + 1);
+  }
+  if (!dateStr || dateStr.length < 8) return null;
+  var year = parseInt(dateStr.slice(0, 4), 10);
+  var month = parseInt(dateStr.slice(4, 6), 10) - 1;
+  var day = parseInt(dateStr.slice(6, 8), 10);
+  var hour = 0, min = 0;
+  if (dateStr.length >= 15 && dateStr[8] === "T") {
+    hour = parseInt(dateStr.slice(9, 11), 10) || 0;
+    min = parseInt(dateStr.slice(11, 13), 10) || 0;
+  }
+  // If the date ends in Z, it's UTC; otherwise assume local (America/Chicago)
+  var isUTC = dateStr.indexOf("Z") !== -1;
+  var date = new Date(isUTC ? Date.UTC(year, month, day, hour, min) : new Date(year, month, day, hour, min).getTime());
+  return { date: date, allDay: isAllDay };
+}
+
+function unfoldICal(text) {
+  // iCal folds long lines with CRLF followed by a space or tab
+  return text.replace(/\r\n /g, "").replace(/\r\n\t/g, "");
+}
+
+function parseICalField(vevent, name) {
+  var re = new RegExp("\\n" + name + "(;[^\n:]*)?:([^\n]*)", "i");
+  var match = vevent.match(re);
+  return match ? match[2] : "";
+}
+
+async function handleCalendarEvents(request, env) {
+  var session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  var icalUrl = env.GOOGLE_CALENDAR_ICAL_URL;
+  if (!icalUrl) {
+    return corsResponse({ error: "Calendar not configured" }, request, env, 502);
+  }
+
+  try {
+    var resp = await fetch(icalUrl, { headers: { "User-Agent": "unicrm-dashboard-proxy" } });
+    if (!resp.ok) throw new Error("iCal fetch returned " + resp.status);
+    var raw = await resp.text();
+    var unfolded = unfoldICal(raw);
+
+    // Split into VEVENT blocks
+    var events = [];
+    var blocks = unfolded.split("BEGIN:VEVENT");
+    for (var i = 1; i < blocks.length; i++) {
+      var block = blocks[i];
+      var endIdx = block.indexOf("END:VEVENT");
+      if (endIdx === -1) continue;
+      block = "\n" + block.slice(0, endIdx);
+
+      var dtstart = parseICalField(block, "DTSTART");
+      var dtend = parseICalField(block, "DTEND");
+      var summary = parseICalField(block, "SUMMARY");
+      var description = parseICalField(block, "DESCRIPTION");
+      var location = parseICalField(block, "LOCATION");
+
+      if (!dtstart || !summary) continue;
+
+      var start = parseICalDate(dtstart);
+      var end = dtend ? parseICalDate(dtend) : null;
+      if (!start) continue;
+
+      // Unescape iCal text
+      summary = summary.replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+      description = description.replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+      location = location.replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+
+      events.push({
+        summary: summary,
+        start: start.date.toISOString(),
+        end: end ? end.date.toISOString() : start.date.toISOString(),
+        allDay: start.allDay,
+        description: description || "",
+        location: location || ""
+      });
+    }
+
+    // Sort by start date, filter to upcoming only, take top 5
+    var now = new Date();
+    events.sort(function (a, b) { return a.start.localeCompare(b.start); });
+    var upcoming = [];
+    for (var j = 0; j < events.length && upcoming.length < 5; j++) {
+      var ev = events[j];
+      // Keep events that haven't ended yet
+      if (ev.end >= now.toISOString() || ev.start >= now.toISOString()) {
+        upcoming.push(ev);
+      }
+    }
+
+    return corsResponse({ ok: true, events: upcoming }, request, env);
+  } catch (err) {
+    console.error("Calendar events error:", err.message);
+    return corsResponse({ error: "Could not load calendar events" }, request, env, 502);
   }
 }
 

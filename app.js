@@ -764,21 +764,44 @@
     media.addEventListener("change", event => { if (!storedTheme()) apply(event.matches ? "dark" : "light"); });
   }
 
+  // ── Calendar events ────────────────────────────────────────────
+
+  async function loadCalendarEvents() {
+    var container = $("#cal-events-list");
+    if (!container || !workerUrl) return;
+    try {
+      var response = await fetch(workerUrl + "/calendar/events", { headers: authHeaders(), cache: "no-store" });
+      if (!response.ok) throw new Error("Calendar fetch failed");
+      var data = await response.json();
+      if (!data.events || !data.events.length) {
+        container.innerHTML = emptyState("No upcoming events on the calendar.");
+        return;
+      }
+      container.innerHTML = data.events.map(function (e) {
+        var start = new Date(e.start);
+        var showTime = !e.allDay;
+        var timeHTML = showTime
+          ? '<time><strong>' + start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + '</strong><span>' + start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + '</span></time>'
+          : '<time><strong>' + start.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + '</strong><span>All day</span></time>';
+        var meta = [e.location, e.description].filter(Boolean).join(" · ");
+        return '<div class="event-item"><time><strong>' + start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + '</strong><span>' + (showTime ? start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "All day") + '</span></time><div><h3>' + escapeHtml(e.summary) + '</h3>' + (meta ? '<p>' + escapeHtml(meta) + '</p>' : '') + '</div></div>';
+      }).join("");
+    } catch (err) {
+      container.innerHTML = emptyState("Calendar events unavailable.");
+    }
+  }
+
+  function setupCalendar() {
+    if (!$("#cal-events-panel")) return;
+    loadCalendarEvents();
+  }
+
   const now = new Date();
   const hour = now.getHours();
   $("#today-label").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   $("#hero-greeting").textContent = `Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, team.`;
   var monthLabel = $("#month-label");
   if (monthLabel) monthLabel.textContent = now.toLocaleDateString(undefined, { month: "long" });
-  var calCopyBtn = $("#cal-ical-copy-btn");
-  var calIcalUrl = $("#cal-ical-url");
-  if (calCopyBtn && calIcalUrl) {
-    calCopyBtn.addEventListener("click", function () {
-      calIcalUrl.select();
-      document.execCommand("copy");
-      calCopyBtn.textContent = "Copied!";
-      setTimeout(function () { calCopyBtn.textContent = "Copy"; }, 1800);
-    });
-  }
+  setupCalendar();
   setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); loadGitHubData();
 })();
