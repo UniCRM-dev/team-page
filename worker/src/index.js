@@ -53,6 +53,9 @@ export default {
       if (method === "GET" && url.pathname === "/projects") {
         return handleProjectsCount(request, env);
       }
+      if (method === "GET" && url.pathname === "/metrics") {
+        return handleOrgMetrics(request, env);
+      }
       if (method === "GET" && url.pathname === "/calendar/events") {
         return handleCalendarEvents(request, env);
       }
@@ -547,6 +550,42 @@ async function handleProjectsCount(request, env) {
   } catch (err) {
     console.error("Projects count fetch failed:", err.message);
     return corsResponse({ error: "Could not count projects" }, request, env, 502);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Metrics — org-wide open issues and pull requests (Workstreams cards)
+// ═══════════════════════════════════════════════════════════════════
+
+async function handleOrgMetrics(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  const owner = env.DISCUSSIONS_OWNER || "UniCRM-dev";
+  const query = `query {
+    openIssues: search(query: "org:${owner} is:issue state:open", type: ISSUE, first: 1) { issueCount }
+    openPrs: search(query: "org:${owner} is:pr state:open", type: ISSUE, first: 1) { issueCount }
+  }`;
+
+  try {
+    const result = await graphql(query, {}, token);
+    if (result.errors) {
+      console.error("Metrics error:", result.errors[0].message);
+      return corsResponse({ error: "Could not load metrics: " + result.errors[0].message }, request, env, 502);
+    }
+    return corsResponse({
+      ok: true,
+      issues: result.data.openIssues.issueCount,
+      pullRequests: result.data.openPrs.issueCount
+    }, request, env);
+  } catch (err) {
+    console.error("Metrics fetch failed:", err.message);
+    return corsResponse({ error: "Could not load metrics" }, request, env, 502);
   }
 }
 
