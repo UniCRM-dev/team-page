@@ -1379,7 +1379,12 @@ textarea { resize: vertical; }
   padding: 10px 12px;
   margin-inline: -12px;
   border-radius: var(--r-sm);
-  text-decoration: none;
+  border: none;
+  background: none;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   color: var(--text);
   transition: background .14s ease;
 }

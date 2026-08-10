@@ -402,11 +402,36 @@
   }
 
   function renderFileItem(file) {
-    return '<a class="doc-file-item" href="' + escapeHtml(workerUrl + "/documents/download?path=" + encodeURIComponent(file.path)) + '" target="_blank" rel="noopener">'
+    // A plain <a> can't attach the session token, so downloads go through
+    // downloadDocument() which fetches with auth and hands the browser a blob.
+    return '<button type="button" class="doc-file-item" data-download-path="' + escapeHtml(file.path) + '">'
       + '<span class="doc-file-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>'
       + '<span class="doc-file-info"><strong class="doc-file-name">' + escapeHtml(file.name) + '</strong><small class="doc-file-meta">' + formatFileSize(file.size) + '</small></span>'
       + '<span class="doc-file-download">Download <span aria-hidden="true">↗</span></span>'
-      + '</a>';
+      + '</button>';
+  }
+
+  async function downloadDocument(path) {
+    if (!workerUrl) return;
+    try {
+      var response = await fetch(workerUrl + "/documents/download?path=" + encodeURIComponent(path), { headers: authHeaders(), cache: "no-store" });
+      if (!response.ok) {
+        var body = await response.json().catch(function () { return {}; });
+        showToast(body.error || "Download failed");
+        return;
+      }
+      var blob = await response.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = path.split("/").pop() || "document";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    } catch (err) {
+      showToast("Download failed");
+    }
   }
 
   function docGroup(name, files) {
@@ -481,6 +506,17 @@
     var docConfig = config.documents || {};
     var folder = docConfig.folder || "docs";
     var selectedDir = null;
+
+    // Delegated listener so it survives loadDocuments() re-rendering the list
+    var docList = $("#document-list");
+    if (docList) {
+      docList.addEventListener("click", function (e) {
+        var row = e.target.closest ? e.target.closest("[data-download-path]") : null;
+        if (!row) return;
+        e.preventDefault();
+        downloadDocument(row.getAttribute("data-download-path"));
+      });
+    }
 
     function selectDir(dirPath) {
       selectedDir = dirPath;
