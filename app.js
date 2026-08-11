@@ -321,6 +321,16 @@
     const navLinks = $$('.side-nav a[href^="#"]');
     navLinks.forEach(link => link.addEventListener("click", () => navLinks.forEach(a => a.classList.toggle("active", a === link))));
 
+    // Mobile webviews often ignore target="_blank" and navigate in place —
+    // open external links explicitly in a new tab; if the browser blocks
+    // that (window.open returns null), fall back to the default navigation.
+    document.addEventListener("click", event => {
+      const link = event.target.closest ? event.target.closest('a[target="_blank"]') : null;
+      if (!link) return;
+      const opened = window.open(link.href, "_blank");
+      if (opened) event.preventDefault();
+    });
+
     // Idea detail modal: close via the ×, Done, or Escape/backdrop
     const ideaView = $("#idea-view-dialog");
     $$("#idea-view-dialog [data-close]").forEach(button => button.addEventListener("click", () => ideaView.close()));
