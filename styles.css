@@ -1318,8 +1318,18 @@ textarea { resize: vertical; }
   text-align: center;
 }
 
-/* Chat lives in the side rail — cap the thread so it doesn't stretch the page */
-#message-list { max-height: 360px; overflow-y: auto; }
+/* Chat sits in the documents row (1/3 column) — cap the thread so it doesn't
+   stretch the row. The list's own -10px margins + padding absorb the items'
+   -10px inset margin, so the overhang lands inside the scrollport instead of
+   creating a horizontal scrollbar; the extra right padding keeps the delete
+   button clear of the vertical scrollbar when the thread overflows. */
+#message-list {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -10px;
+  padding: 0 10px 0 20px;
+}
 
 /* ============================================================
    Responsive

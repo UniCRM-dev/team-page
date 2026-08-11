@@ -188,14 +188,6 @@
         </div>
       </section>
       <div class="side-stack">
-        <article class="panel" id="team-chat">
-          <div class="panel-heading"><div><p class="kicker">Team chat</p><h2>Messages</h2></div><span class="message-count" id="message-count"></span></div>
-          <div id="message-list"></div>
-          <form class="message-form" id="message-form">
-            <input type="text" id="message-input" placeholder="Leave a message for the team…" maxlength="600" autocomplete="off" required>
-            <button class="button button-primary" type="submit" id="message-submit">Send</button>
-          </form>
-        </article>
         <article class="panel attention-panel">
           <div class="panel-heading"><div><p class="kicker">Attention</p><h2>Blockers</h2></div><a id="blockers-link" href="https://github.com/issues" target="_blank" rel="noopener">View all</a></div>
           <div id="blocker-list"></div>
@@ -206,7 +198,7 @@
         </article>
         <article class="panel" id="cal-events-panel">
           <div class="panel-heading">
-            <div><p class="kicker">Schedule</p><h2>Upcoming</h2></div>
+            <div><p class="kicker">Calendar</p><h2>Upcoming</h2></div>
             <a class="cal-link" href="https://calendar.google.com/calendar/embed?src=c904e3f42d1e308d05e775a11b1d36d0193b25621b7fc66f649a60b9353920ed%40group.calendar.google.com&ctz=America%2FChicago" target="_blank" rel="noopener">Open <span aria-hidden="true">↗</span></a>
           </div>
           <div class="event-list" id="cal-events-list">
@@ -226,6 +218,14 @@
           </button>
         </div>
         <div id="document-list"></div>
+      </article>
+      <article class="panel" id="team-chat">
+        <div class="panel-heading"><div><p class="kicker">Team chat</p><h2>Messages</h2></div><span class="message-count" id="message-count"></span></div>
+        <div id="message-list"></div>
+        <form class="message-form" id="message-form">
+          <input type="text" id="message-input" placeholder="Leave a message for the team…" maxlength="600" autocomplete="off" required>
+          <button class="button button-primary" type="submit" id="message-submit">Send</button>
+        </form>
       </article>
     </section>
 

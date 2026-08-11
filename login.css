@@ -159,8 +159,13 @@ body.login {
   border-color: var(--border-strong);
 }
 
+/* styles.css switches dashboard icons via display:none; the login toggle
+   crossfades via opacity instead, so force both icons to always render. */
 .login-theme-toggle .icon-sun,
-.login-theme-toggle .icon-moon {
+.login-theme-toggle .icon-moon,
+[data-theme="dark"] .login-theme-toggle .icon-sun,
+[data-theme="dark"] .login-theme-toggle .icon-moon {
+  display: block;
   position: absolute;
   transition: opacity .2s ease, transform .25s ease;
 }
