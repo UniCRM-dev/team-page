@@ -174,10 +174,9 @@
       if (!data.ok || !Array.isArray(data.discussions)) throw new Error("Announcements response invalid");
       const latest = data.discussions.slice(0, 2);
       if (latest.length) {
-        $("#announcement-list").innerHTML = latest.map(discussion => {
-          const author = typeof discussion.author === "string" ? discussion.author : (discussion.author && discussion.author.login);
-          return `<a class="announcement-item" href="${discussion.url}" target="_blank" rel="noopener"><div><h3>${escapeHtml(discussion.title)}</h3><p>${escapeHtml(discussion.body)}</p><small>${escapeHtml(authorName(author))} · ${monthDay(discussion.createdAt)}</small></div></a>`;
-        }).join("");
+        $("#announcement-list").innerHTML = latest.map(discussion =>
+          `<a class="announcement-item" href="${discussion.url}" target="_blank" rel="noopener"><div><h3>${escapeHtml(discussion.title)}</h3><p>${escapeHtml(discussion.body)}</p><small>${monthDay(discussion.createdAt)}</small></div></a>`
+        ).join("");
       } else {
         empty();
       }

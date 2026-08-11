@@ -58,6 +58,7 @@
   --hero-muted: #c9d6e8;
   --hero-line: rgba(255, 255, 255, .14);
   --hero-card: rgba(255, 255, 255, .09);
+  --announcement-bg: rgba(0, 0, 0, .18);
   --nav-bg: #0b1220;
   --nav-border: #1e2a3d;
   --nav-text: #c7d2e3;
@@ -121,6 +122,7 @@
   --hero-start: #0c172b;
   --hero-end: #123b72;
   --hero-card: rgba(255, 255, 255, .075);
+  --announcement-bg: rgba(0, 0, 0, .18);
   --nav-bg: #050a12;
   --nav-border: #182236;
 }
@@ -474,7 +476,7 @@ main > *,
 .hero-brief > a:hover { color: #ffffff; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Announcements inside the hero card */
-.hero-brief .announcement-item { color: var(--hero-text); border-top-color: var(--hero-line); }
+.hero-brief .announcement-item { color: var(--hero-text); border-top-color: var(--hero-line); background: var(--announcement-bg); }
 .hero-brief .announcement-item:hover { background: rgba(255, 255, 255, .07); }
 .hero-brief .announcement-item::before { background: rgba(255, 255, 255, .2); }
 .hero-brief .announcement-item.pinned::before { background: #38bdf8; }
