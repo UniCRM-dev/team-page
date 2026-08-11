@@ -175,7 +175,7 @@
       const latest = data.discussions.slice(0, 2);
       if (latest.length) {
         $("#announcement-list").innerHTML = latest.map(discussion =>
-          `<a class="announcement-item" href="${discussion.url}" target="_blank" rel="noopener"><div><h3>${escapeHtml(discussion.title)}</h3><p>${escapeHtml(discussion.body)}</p><small>${monthDay(discussion.createdAt)}</small></div></a>`
+          `<a class="announcement-item" href="${discussion.url}" target="_blank" rel="noopener"><div><p>${escapeHtml(discussion.body)}</p><small>${monthDay(discussion.createdAt)}</small></div></a>`
         ).join("");
       } else {
         empty();
