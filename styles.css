@@ -555,6 +555,7 @@ main > *,
   margin-top: 18px;
 }
 .span-2 { grid-column: span 2; }
+.span-all { grid-column: 1 / -1; }
 
 .panel,
 .work-section {

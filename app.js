@@ -143,7 +143,7 @@
     document.title = `${config.companyName || "UniCRM"} Operations`;
     set("#github-org-link", org); set("#new-task-link", configured ? `${repoUrl(repos.operations)}/issues/new` : "https://github.com/issues");
     set("#priorities-link", project); set("#blockers-link", configured ? issuesUrl(repos.operations, "is:open label:blocked") : org);
-    set("#milestones-link", project); set("#dev-board-link", project); set("#sales-board-link", project);
+    set("#dev-board-link", project); set("#sales-board-link", project);
     set("#issues-link", configured ? `${orgUrl()}/issues` : org);
     set("#prs-link", configured ? `${orgUrl()}/pulls` : org);
     set("#actions-link", configured ? `${repoUrl(repos.operations)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
@@ -189,13 +189,11 @@
     const all = Object.keys(byRepo).reduce((list, key) => { byRepo[key].forEach(issue => { issue.repo = repos[key]; }); return list.concat(byRepo[key]); }, []).filter(issue => !issue.pull_request);
     const isPriority = i => hasLabel(i, labels.priority);
     const isBlocker = i => hasLabel(i, labels.blocker);
-    const isMilestone = i => hasLabel(i, labels.milestone);
     const isDecision = i => hasLabel(i, labels.decision);
-    const isClassified = i => isPriority(i) || isBlocker(i) || isMilestone(i) || isDecision(i);
+    const isClassified = i => isPriority(i) || isBlocker(i) || isDecision(i);
 
     const priorities = all.filter(isPriority);
     const blockers = all.filter(isBlocker);
-    const milestones = all.filter(isMilestone).map(issue => ({ issue, at: issue.milestone && issue.milestone.due_on ? new Date(issue.milestone.due_on) : new Date(issue.created_at) })).sort((a, b) => a.at - b.at);
     const devTasks = (byRepo.product || []).filter(issue => !issue.pull_request && !isClassified(issue));
     const salesTasks = (byRepo.sales || []).filter(issue => !issue.pull_request && !isClassified(issue));
 
@@ -213,12 +211,6 @@
       const ownerName = issueOwner(issue);
       return `<a class="blocker-item" href="${issue.html_url}" target="_blank" rel="noopener"><span class="severity ${severity}">!</span><div><h3>${escapeHtml(issue.title)}</h3><p>${avatar(ownerName)} ${escapeHtml(ownerName)} · ${escapeHtml(ageLabel(issue.created_at))}</p></div><span class="arrow">→</span></a>`;
     }).join("") || emptyState(`Open an issue labeled "${labels.blocker}" to track a blocker.`);
-
-    $("#milestone-list").innerHTML = milestones.slice(0, 6).map(({ issue, at }) => {
-      const milestoneLabel = issue.labels.find(label => label.name === labels.milestone);
-      const tone = milestoneLabel ? labelTone(milestoneLabel) : "blue";
-      return `<a class="timeline-item" href="${issue.html_url}" target="_blank" rel="noopener"><time><strong>${at.getDate()}</strong><span>${at.toLocaleDateString(undefined, { month: "short" }).toUpperCase()}</span></time><div><h3>${escapeHtml(issue.title)}</h3><p>${escapeHtml(issue.milestone ? issue.milestone.title : issueBody(issue, 70))}</p></div><span class="pill ${tone}">Open</span></a>`;
-    }).join("") || emptyState(`Open an issue labeled "${labels.milestone}" to track a milestone.`);
 
     const taskRow = (issue, repo) => {
       const ownerName = issueOwner(issue);
@@ -363,7 +355,6 @@
     if (!workerUrl) return;
     var container = $("#message-list");
     var countEl = $("#message-count");
-    var syncNote = $("#message-sync-note");
     if (!container) return;
 
     try {
@@ -377,7 +368,6 @@
         return;
       }
       if (countEl) countEl.textContent = data.messages.length + " message" + (data.messages.length !== 1 ? "s" : "");
-      if (syncNote) syncNote.hidden = false;
       container.innerHTML = data.messages.map(function (msg) {
         var roleClass = msg.role === "sales" ? "sales" : "";
         var initials = (msg.author || "?").slice(0, 2).toUpperCase();
