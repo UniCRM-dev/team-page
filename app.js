@@ -50,6 +50,12 @@
     return `${d.toLocaleDateString(undefined, { month: "short" }).toUpperCase()} ${String(d.getDate()).padStart(2, "0")}`;
   }
 
+  // GitHub logins from the worker → team display names from config.team
+  function authorName(login) {
+    const member = (config.team || []).find(m => m.github === login);
+    return member ? member.name : login;
+  }
+
   function renderStaticData() {
     const schedule = config.schedule || [];
     var eventList = $("#event-list");
@@ -58,13 +64,12 @@
     }
     const pipeline = config.pipeline || [];
     $("#pipeline-bars").innerHTML = pipeline.map(([name, count, width]) => `<div class="pipeline-row"><span>${escapeHtml(name)}</span><div><i style="width:${width}%"></i></div><b>${count}</b></div>`).join("") || emptyState("Configure pipeline stages in config.js");
-    const cats = (config.discussions && config.discussions.categories) || {};
     // The poll panel is filled live from the polls discussion category (loadPolls)
     $("#poll-question").textContent = "";
     $("#poll-options").innerHTML = emptyState("Loading latest poll…");
-    const announcementUrl = configured ? discussionCategory(cats.announcements || "announcements") : "https://github.com/";
     renderIdeas();
-    $("#announcement-list").innerHTML = (config.announcements || []).slice(0, 6).map(announcement => `<a class="announcement-item${announcement.pinned ? " pinned" : ""}" href="${announcementUrl}" target="_blank" rel="noopener"><div><h3>${escapeHtml(announcement.title)}</h3><p>${escapeHtml(announcement.body)}</p><small>${escapeHtml(announcement.author)} · ${monthDay(announcement.date)}</small></div>${announcement.pinned ? '<span class="pill amber">New</span>' : ""}</a>`).join("") || emptyState("Post an update in the announcements category.");
+    // The announcements brief is filled live from the announcements category (loadAnnouncements)
+    $("#announcement-list").innerHTML = emptyState("Loading latest announcements…");
   }
 
   // Ideas list: GitHub Discussions when live data has loaded (window._liveIdeas),
@@ -103,12 +108,6 @@
       if (!response.ok) return;
       const data = await response.json();
       if (!data.ok || !Array.isArray(data.discussions)) return;
-      // The worker returns author as a GitHub login string; map known logins
-      // to team display names via config.team, falling back to the raw login.
-      const authorName = login => {
-        const member = (config.team || []).find(m => m.github === login);
-        return member ? member.name : login;
-      };
       const apiIdeas = data.discussions.map(discussion => {
         const author = typeof discussion.author === "string" ? discussion.author : (discussion.author && discussion.author.login);
         return {
@@ -160,6 +159,30 @@
     } catch (error) {
       $("#poll-question").textContent = "";
       $("#poll-options").innerHTML = emptyState("Couldn't load the latest poll.");
+    }
+  }
+
+  // Announcements brief: the 2 newest discussions in the announcements category.
+  async function loadAnnouncements() {
+    if (!workerUrl) return;
+    const empty = () => { $("#announcement-list").innerHTML = emptyState("No announcements yet — post one in the announcements category."); };
+    try {
+      const slug = ((config.discussions || {}).categories || {}).announcements || "announcements";
+      const response = await fetch(`${workerUrl}/discussions?category=${encodeURIComponent(slug)}`, { headers: authHeaders(), cache: "no-store" });
+      if (!response.ok) throw new Error("Announcements fetch failed");
+      const data = await response.json();
+      if (!data.ok || !Array.isArray(data.discussions)) throw new Error("Announcements response invalid");
+      const latest = data.discussions.slice(0, 2);
+      if (latest.length) {
+        $("#announcement-list").innerHTML = latest.map(discussion => {
+          const author = typeof discussion.author === "string" ? discussion.author : (discussion.author && discussion.author.login);
+          return `<a class="announcement-item" href="${discussion.url}" target="_blank" rel="noopener"><div><h3>${escapeHtml(discussion.title)}</h3><p>${escapeHtml(discussion.body)}</p><small>${escapeHtml(authorName(author))} · ${monthDay(discussion.createdAt)}</small></div></a>`;
+        }).join("");
+      } else {
+        empty();
+      }
+    } catch (error) {
+      $("#announcement-list").innerHTML = emptyState("Couldn't load the latest announcements.");
     }
   }
 
@@ -968,5 +991,5 @@
   }
 
   setupCalendar();
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); loadPolls(); scheduleAutoRefresh();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); loadAnnouncements(); loadPolls(); scheduleAutoRefresh();
 })();

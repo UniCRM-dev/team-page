@@ -25,10 +25,6 @@ window.DASHBOARD_CONFIG = {
     { title: "Self-serve demo sandbox for prospects", area: "Sales", submittedBy: "Courtney", date: "2026-07-24" },
     { title: "Public changelog for customer releases", area: "Product", submittedBy: "Jesse", date: "2026-07-18" }
   ],
-  announcements: [
-    { title: "Partner beta launch confirmed for Aug 14", body: "Sprint 09 ships the partner beta on schedule — final onboarding runs next week.", author: "Shawn", date: "2026-08-01", pinned: true },
-    { title: "New customer-feedback label on issues", body: "Sales now tags field requests with customer-feedback so they surface on the dashboard.", author: "Courtney", date: "2026-07-28" }
-  ],
   schedule: [
     { time: "9:30", period: "AM", title: "Weekly team sync", meta: "Mon · 45 min", tone: "blue" },
     { time: "2:00", period: "PM", title: "Partner discovery", meta: "Wed · Courtney, Chelsey", tone: "teal" },
