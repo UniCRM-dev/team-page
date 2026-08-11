@@ -69,18 +69,32 @@
       $("#poll-options").innerHTML = emptyState("Add a poll in config.js");
     }
     const cats = (config.discussions && config.discussions.categories) || {};
-    const ideasUrl = configured ? repoDiscussionCategory(repos.ideas, cats.ideas || "ideas") : "https://github.com/";
     const announcementUrl = configured ? discussionCategory(cats.announcements || "announcements") : "https://github.com/";
-    renderIdeas(ideasUrl);
+    renderIdeas();
     $("#announcement-list").innerHTML = (config.announcements || []).slice(0, 6).map(announcement => `<a class="announcement-item${announcement.pinned ? " pinned" : ""}" href="${announcementUrl}" target="_blank" rel="noopener"><div><h3>${escapeHtml(announcement.title)}</h3><p>${escapeHtml(announcement.body)}</p><small>${escapeHtml(announcement.author)} · ${monthDay(announcement.date)}</small></div>${announcement.pinned ? '<span class="pill amber">New</span>' : ""}</a>`).join("") || emptyState("Post an update in the announcements category.");
   }
 
   // Ideas list: GitHub Discussions when live data has loaded (window._liveIdeas),
   // otherwise localStorage submissions + the static config.ideas[] seed list.
-  function renderIdeas(fallbackUrl) {
+  // Each row is a button that opens the idea in a modal — no GitHub redirect.
+  function renderIdeas() {
     const ideas = window._liveIdeas || storedIdeas().concat(config.ideas || []);
-    const href = idea => escapeHtml(idea.url || fallbackUrl);
-    $("#idea-list").innerHTML = ideas.slice(0, 8).map(idea => `<a class="idea-item" href="${href(idea)}" target="_blank" rel="noopener"><time>${monthDay(idea.date)}</time><div><h3>${escapeHtml(idea.title)}</h3><p>${escapeHtml(idea.area)}</p><small>Submitted by ${escapeHtml(idea.submittedBy)}</small></div><span class="arrow">↗</span></a>`).join("") || emptyState("Submit an idea and it will show up here.");
+    $("#idea-list").innerHTML = ideas.slice(0, 8).map((idea, index) => `<button type="button" class="idea-item" data-idea-index="${index}"><time>${monthDay(idea.date)}</time><div><h3>${escapeHtml(idea.title)}</h3><p>${escapeHtml(idea.area)}</p><small>Submitted by ${escapeHtml(idea.submittedBy)}</small></div><span class="arrow">↗</span></button>`).join("") || emptyState("Submit an idea and it will show up here.");
+    $$("#idea-list .idea-item").forEach(item => item.addEventListener("click", () => openIdeaModal(ideas[Number(item.dataset.ideaIndex)])));
+  }
+
+  // Detail view for one idea, surfaced in the UI instead of redirecting to GitHub.
+  function openIdeaModal(idea) {
+    if (!idea) return;
+    const dialog = $("#idea-view-dialog");
+    if (!dialog) return;
+    $("#idea-view-title").textContent = idea.title || "Untitled idea";
+    const when = idea.date ? ` · ${monthDay(idea.date)}` : "";
+    $("#idea-view-meta").textContent = `${idea.area || "Idea"} · Submitted by ${idea.submittedBy || "Unknown"}${when}`;
+    $("#idea-view-body").textContent = (idea.body || "").trim() || "No additional details provided.";
+    const link = $("#idea-view-link");
+    if (idea.url) { link.href = idea.url; link.hidden = false; } else { link.hidden = true; }
+    dialog.showModal();
   }
 
   // Fetch ideas from GitHub Discussions (via the worker) and merge with local submissions.
@@ -101,12 +115,13 @@
         area: ideaArea(discussion.body),
         submittedBy: (discussion.author && discussion.author.login) || "Unknown",
         date: discussion.createdAt,
-        url: discussion.url
+        url: discussion.url,
+        body: discussion.body
       }));
       // Local submissions not yet on GitHub stay visible, deduped by title
       const local = storedIdeas().filter(idea => !apiIdeas.some(api => api.title === idea.title));
       window._liveIdeas = local.concat(apiIdeas);
-      renderIdeas(repoDiscussionCategory(repos.ideas, slug));
+      renderIdeas();
     } catch (error) { /* keep localStorage + config fallback */ }
   }
 
@@ -122,7 +137,6 @@
     set("#issues-link", configured ? `${orgUrl()}/issues` : org);
     set("#prs-link", configured ? `${orgUrl()}/pulls` : org);
     set("#actions-link", configured ? `${repoUrl(repos.operations)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
-    set("#sidebar-notes-link", configured ? repoUrl(repos.operations) : org);
     set("#sidebar-wiki-link", configured ? `${repoUrl(repos.operations)}/wiki` : org);
     set("#sidebar-web-link", configured ? repoUrl(repos.sales) : org);
     const cats = (config.discussions && config.discussions.categories) || {};
@@ -304,6 +318,11 @@
     }));
     const navLinks = $$('.side-nav a[href^="#"]');
     navLinks.forEach(link => link.addEventListener("click", () => navLinks.forEach(a => a.classList.toggle("active", a === link))));
+
+    // Idea detail modal: close via the ×, Done, or Escape/backdrop
+    const ideaView = $("#idea-view-dialog");
+    $$("#idea-view-dialog [data-close]").forEach(button => button.addEventListener("click", () => ideaView.close()));
+    ideaView.addEventListener("click", event => { if (event.target === ideaView) ideaView.close(); });
 
     // Show sign-out button when worker auth is active and wire it
     const signOut = $("#sign-out");

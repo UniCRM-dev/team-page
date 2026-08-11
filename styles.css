@@ -615,6 +615,17 @@ main > *,
 .arrow { align-self: center; color: var(--text-3); transition: color .14s ease; }
 a:hover > .arrow { color: var(--accent); }
 
+/* Idea rows are <button>s that open a detail modal — reset button chrome */
+button.idea-item {
+  width: 100%;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.idea-item:hover > .arrow { color: var(--accent); }
+
 .avatar {
   display: inline-grid;
   place-items: center;
@@ -1097,6 +1108,24 @@ textarea { resize: vertical; }
   font-size: 11px;
 }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; }
+
+/* Idea detail dialog has no <form> wrapper — pad its direct children */
+#idea-view-dialog .dialog-heading,
+#idea-view-dialog .dialog-copy,
+#idea-view-dialog .idea-view-body,
+#idea-view-dialog .dialog-actions { padding-left: 28px; padding-right: 28px; }
+#idea-view-dialog .dialog-heading { padding-top: 28px; }
+#idea-view-dialog .dialog-actions { padding-bottom: 28px; }
+
+.idea-view-body {
+  max-height: 45vh;
+  overflow-y: auto;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 /* ============================================================
    Toast
