@@ -3,7 +3,7 @@ window.DASHBOARD_CONFIG = {
   github: {
     owner: "UniCRM-dev",
     repos: {
-      product: "portal",
+      product: "connectors",
       operations: "wiki",
       sales: "web",
       ideas: "skills",
