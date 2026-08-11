@@ -11,7 +11,7 @@ SESSION_SECRET = "replace-with-a-random-48-byte-base64-string"
 # Create at: https://github.com/settings/tokens
 # Fine-grained PAT needs: Metadata (read), Issues (read), Pull requests (read),
 #   Actions (read), Contents (read) — on the 4 configured repos.
-# For idea submission via API, add: Discussions (read+write) on the ideas/team-page repo.
+# For idea submission via API, add: Discussions (read+write) on the ideas/team-page-portal repo.
 # For document upload/download, add: Contents (read+write) on the wiki repo.
 GITHUB_TOKEN = "github_pat_..."
 

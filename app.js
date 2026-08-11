@@ -15,7 +15,7 @@
   const issuesUrl = (repo, query = "") => `${repoUrl(repo)}/issues${query ? `?q=${encodeURIComponent(query)}` : ""}`;
   const discussionCategory = slug => `https://github.com/orgs/${owner}/discussions/categories/${slug}`;
   const newDiscussion = (slug, title = "", body = "") => `https://github.com/orgs/${owner}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
-  // Repo-scoped variants — the worker creates/reads discussions in repos.ideas ("team-page"),
+  // Repo-scoped variants — the worker creates/reads discussions in repos.ideas ("team-page-portal"),
   // so links and fallbacks must target that repo, not org-level discussions.
   const repoDiscussionCategory = (repo, slug) => `https://github.com/${owner}/${repo}/discussions/categories/${slug}`;
   const repoNewDiscussion = (repo, slug, title = "", body = "") => `https://github.com/${owner}/${repo}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;

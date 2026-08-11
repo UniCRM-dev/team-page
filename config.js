@@ -6,7 +6,7 @@ window.DASHBOARD_CONFIG = {
       product: "connectors",
       operations: "wiki",
       sales: "web",
-      ideas: "team-page",
+      ideas: "team-page-portal",
       documents: "wiki"
     },
     projectNumber: 1,
