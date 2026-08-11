@@ -188,6 +188,14 @@
         </div>
       </section>
       <div class="side-stack">
+        <article class="panel" id="team-chat">
+          <div class="panel-heading"><div><p class="kicker">Team chat</p><h2>Messages</h2></div><span class="message-count" id="message-count"></span></div>
+          <div id="message-list"></div>
+          <form class="message-form" id="message-form">
+            <input type="text" id="message-input" placeholder="Leave a message for the team…" maxlength="600" autocomplete="off" required>
+            <button class="button button-primary" type="submit" id="message-submit">Send</button>
+          </form>
+        </article>
         <article class="panel attention-panel">
           <div class="panel-heading"><div><p class="kicker">Attention</p><h2>Blockers</h2></div><a id="blockers-link" href="https://github.com/issues" target="_blank" rel="noopener">View all</a></div>
           <div id="blocker-list"></div>
@@ -222,20 +230,12 @@
     </section>
 
     <section class="section-grid" id="ideas">
-      <article class="panel span-all" id="team-chat">
-        <div class="panel-heading"><div><p class="kicker">Team chat</p><h2>Messages</h2></div><span class="message-count" id="message-count"></span></div>
-        <div id="message-list"></div>
-        <form class="message-form" id="message-form">
-          <input type="text" id="message-input" placeholder="Leave a message for the team…" maxlength="600" autocomplete="off" required>
-          <button class="button button-primary" type="submit" id="message-submit">Send</button>
-        </form>
-      </article>
       <article class="panel span-2">
         <div class="panel-heading"><div><p class="kicker">Idea inbox</p><h2>Ideas</h2></div><a id="ideas-link" href="https://github.com/" target="_blank" rel="noopener">View all <span aria-hidden="true">↗</span></a></div>
         <div id="idea-list"></div>
       </article>
       <article class="panel poll-panel">
-        <div class="panel-heading"><div><p class="kicker">Team poll</p><h2>Open question</h2></div><a id="polls-link" href="https://github.com/UniCRM-dev/team-page-portal/discussions/categories/polls" target="_blank" rel="noopener">Polls <span aria-hidden="true">↗</span></a></div>
+        <div class="panel-heading"><div><p class="kicker">Team poll</p><h2>Current poll</h2></div><a id="polls-link" href="https://github.com/UniCRM-dev/team-page-portal/discussions/categories/polls" target="_blank" rel="noopener">Polls <span aria-hidden="true">↗</span></a></div>
         <h3 class="poll-question" id="poll-question"></h3>
         <p class="poll-note">The latest poll from the team's polls category. Tap an option to vote on GitHub.</p>
         <div class="poll-options" id="poll-options"></div>

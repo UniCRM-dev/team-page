@@ -123,8 +123,8 @@
   --hero-end: #123b72;
   --hero-card: rgba(255, 255, 255, .075);
   --announcement-bg: rgba(0, 0, 0, .10);
-  --nav-bg: #050a12;
-  --nav-border: #182236;
+  --nav-bg: #0d1524;
+  --nav-border: #24334e;
 }
 
 /* ============================================================
@@ -672,7 +672,7 @@ button.idea-item:hover > .arrow { color: var(--accent); }
 .timeline-item h3,
 .event-item h3,
 .idea-item h3,
-.announcement-item h3 { margin: 0 0 3px; font-size: 13.5px; font-weight: 600; }
+.announcement-item h3 { margin: 0 0 3px; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .priority-copy p,
 .timeline-item p,
 .event-item p,
@@ -1318,6 +1318,9 @@ textarea { resize: vertical; }
   text-align: center;
 }
 
+/* Chat lives in the side rail — cap the thread so it doesn't stretch the page */
+#message-list { max-height: 360px; overflow-y: auto; }
+
 /* ============================================================
    Responsive
    ============================================================ */
@@ -1467,7 +1470,7 @@ textarea { resize: vertical; }
 }
 .doc-file-meta {
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 
 .doc-file-download {
@@ -1524,7 +1527,7 @@ textarea { resize: vertical; }
   flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: 10.5px;
-  color: var(--text-3);
+  color: var(--text-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-full);

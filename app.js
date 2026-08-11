@@ -657,7 +657,7 @@
 
     return '<details class="doc-folder doc-folder-root" open>'
       + '<summary>' + FOLDER_CHEVRON_SVG + FOLDER_ICON_SVG + '<span class="doc-tree-name">' + escapeHtml(folder) + '</span>'
-      + '<span class="doc-tree-count">' + directories.length + ' folders · ' + totalFiles + ' files</span></summary>'
+      + '<span class="doc-tree-count">' + directories.length + (directories.length === 1 ? ' folder' : ' folders') + ' · ' + totalFiles + (totalFiles === 1 ? ' file' : ' files') + '</span></summary>'
       + '<div class="doc-folder-children">' + children + '</div>'
       + '</details>';
   }
