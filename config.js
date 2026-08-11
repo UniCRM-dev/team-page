@@ -7,6 +7,7 @@ window.DASHBOARD_CONFIG = {
       operations: "wiki",
       sales: "web",
       ideas: "team-page-portal",
+      polls: "team-page-portal",
       documents: "wiki"
     },
     projectNumber: 1,

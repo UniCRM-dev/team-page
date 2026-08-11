@@ -15,9 +15,10 @@
   const issuesUrl = (repo, query = "") => `${repoUrl(repo)}/issues${query ? `?q=${encodeURIComponent(query)}` : ""}`;
   const discussionCategory = slug => `https://github.com/orgs/${owner}/discussions/categories/${slug}`;
   const newDiscussion = (slug, title = "", body = "") => `https://github.com/orgs/${owner}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
-  // Repo-scoped variant — the worker creates/reads discussions in repos.ideas ("team-page-portal"),
-  // so links must target that repo, not org-level discussions.
+  // Repo-scoped variants — the worker creates/reads discussions in repos.ideas /
+  // repos.polls ("team-page-portal"), so links must target that repo, not org-level discussions.
   const repoDiscussionCategory = (repo, slug) => `https://github.com/${owner}/${repo}/discussions/categories/${slug}`;
+  const repoNewDiscussion = (repo, slug, title = "", body = "") => `https://github.com/${owner}/${repo}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
   const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
   const IDEA_STORAGE_KEY = "dashboard-submitted-ideas";
   function storedIdeas() {
@@ -58,17 +59,17 @@
     const pipeline = config.pipeline || [];
     $("#pipeline-bars").innerHTML = pipeline.map(([name, count, width]) => `<div class="pipeline-row"><span>${escapeHtml(name)}</span><div><i style="width:${width}%"></i></div><b>${count}</b></div>`).join("") || emptyState("Configure pipeline stages in config.js");
     const poll = config.poll || {};
+    const cats = (config.discussions && config.discussions.categories) || {};
     if (poll.question) {
       const total = (poll.options || []).reduce((sum, option) => sum + (option.votes || 0), 0) || 1;
       $("#poll-question").textContent = poll.question;
       $("#poll-options").innerHTML = (poll.options || []).map(option => {
         const pct = Math.round(((option.votes || 0) / total) * 100);
-        return `<a class="poll-option" href="${discussionCategory((config.discussions && config.discussions.categories && config.discussions.categories.polls) || "polls")}" target="_blank" rel="noopener"><span>${escapeHtml(option.label)}</span><div><i style="width:${pct}%"></i></div><b>${option.votes || 0}</b></a>`;
+        return `<a class="poll-option" href="${repoDiscussionCategory(repos.polls, cats.polls || "polls")}" target="_blank" rel="noopener"><span>${escapeHtml(option.label)}</span><div><i style="width:${pct}%"></i></div><b>${option.votes || 0}</b></a>`;
       }).join("") || emptyState("Add poll options in config.js");
     } else {
       $("#poll-options").innerHTML = emptyState("Add a poll in config.js");
     }
-    const cats = (config.discussions && config.discussions.categories) || {};
     const announcementUrl = configured ? discussionCategory(cats.announcements || "announcements") : "https://github.com/";
     renderIdeas();
     $("#announcement-list").innerHTML = (config.announcements || []).slice(0, 6).map(announcement => `<a class="announcement-item${announcement.pinned ? " pinned" : ""}" href="${announcementUrl}" target="_blank" rel="noopener"><div><h3>${escapeHtml(announcement.title)}</h3><p>${escapeHtml(announcement.body)}</p><small>${escapeHtml(announcement.author)} · ${monthDay(announcement.date)}</small></div>${announcement.pinned ? '<span class="pill amber">New</span>' : ""}</a>`).join("") || emptyState("Post an update in the announcements category.");
@@ -150,8 +151,8 @@
     set("#sidebar-web-link", configured ? repoUrl(repos.sales) : org);
     const cats = (config.discussions && config.discussions.categories) || {};
     const pollsSlug = cats.polls || "polls";
-    set("#polls-link", configured ? discussionCategory(pollsSlug) : org);
-    set("#new-poll-link", configured ? newDiscussion(pollsSlug) : org);
+    set("#polls-link", configured ? repoDiscussionCategory(repos.polls, pollsSlug) : org);
+    set("#new-poll-link", configured ? repoNewDiscussion(repos.polls, pollsSlug) : org);
     set("#ideas-link", configured ? repoDiscussionCategory(repos.ideas, cats.ideas || "ideas") : org);
     set("#announcements-link", configured ? discussionCategory(cats.announcements || "announcements") : org);
     const repositoryLinks = [["Skills", repos.ideas]];
