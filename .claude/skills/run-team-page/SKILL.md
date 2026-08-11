@@ -126,3 +126,10 @@ requests whose `Origin` header isn't in `wrangler.toml`
   body.
 - **`npx wrangler dev` errors about missing secrets** — recreate
   `.dev.vars` from `.env` (command above), then restart.
+- **`wrangler dev` stops responding / curl gets 000 on 8787** — on
+  Windows, killing the background task leaves the npx→wrangler→workerd
+  tree alive, so several instances pile up on the same port and socket
+  fan-out goes to dead workers. Fix: `netstat -ano | findstr :8787` to
+  list LISTENING PIDs, `taskkill /F /PID <each>` (and repeat — workerd
+  respawns until the parent wrangler is dead), then start one fresh
+  instance.
