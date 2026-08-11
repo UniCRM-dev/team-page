@@ -73,7 +73,7 @@
   --r-full: 999px;
 
   /* Type */
-  --font-ui: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
 
   /* Layout */
