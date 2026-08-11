@@ -315,11 +315,6 @@
       });
     }
 
-    // Update idea dialog button text when worker is active (no need to "Continue to GitHub")
-    if (workerUrl) {
-      const submitBtn = $("#submit-idea");
-      if (submitBtn) submitBtn.textContent = "Submit idea";
-    }
   }
 
   // ── Messages ──────────────────────────────────────────────────
