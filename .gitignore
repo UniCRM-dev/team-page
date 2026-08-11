@@ -3,3 +3,7 @@ worker/.dev.vars
 worker/.wrangler/
 .wrangler/
 .env
+
+# run-team-page skill — local deps and screenshots
+.claude/skills/run-team-page/node_modules/
+.claude/skills/run-team-page/shots/
