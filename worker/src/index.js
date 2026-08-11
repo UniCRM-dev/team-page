@@ -382,7 +382,9 @@ async function handleGithubProxy(request, env, url) {
   // Build response — strip github.com cookies/auth headers
   const headers = new Headers();
   const origin = request.headers.get("Origin");
-  Object.assign(headers, corsHeaders(origin, env));
+  // Object.assign doesn't work on Headers instances — copy keys explicitly
+  const cors = corsHeaders(origin, env);
+  Object.keys(cors).forEach(key => headers.set(key, cors[key]));
   headers.set("Content-Type", response.headers.get("Content-Type") || "application/json");
   headers.set("X-GitHub-Status", String(response.status));
   // Pass through rate-limit headers so the dashboard can show them if desired
