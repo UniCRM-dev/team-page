@@ -173,23 +173,16 @@
   async function loadGitHubData() {
     if (!configured || !repos.product) return;
     const keys = ["product", "operations", "sales", "ideas"];
-    const projectsPromise = workerUrl
-      ? fetch(workerUrl + "/projects", { headers: authHeaders(), cache: "no-store" })
-          .then(r => (r.ok ? r.json() : null))
-          .catch(() => null)
-      : Promise.resolve(null);
     const metricsPromise = workerUrl
       ? fetch(workerUrl + "/metrics", { headers: authHeaders(), cache: "no-store" })
           .then(r => (r.ok ? r.json() : null))
           .catch(() => null)
       : Promise.resolve(null);
     try {
-      const [results, releases, runs, orgRepos, projects, metrics] = await Promise.all([
+      const [results, releases, runs, metrics] = await Promise.all([
         Promise.all(keys.map(key => github(`/repos/${owner}/${repos[key]}/issues?state=open&per_page=100&sort=updated&direction=desc`))),
         github(`/repos/${owner}/${repos.product}/releases?per_page=1`),
         github(`/repos/${owner}/${repos.operations}/actions/runs?per_page=1`),
-        github(`/orgs/${owner}/repos?per_page=100`),
-        projectsPromise,
         metricsPromise
       ]);
       const byRepo = {}; keys.forEach((key, index) => { byRepo[key] = results[index]; });
@@ -207,9 +200,6 @@
       if (releases[0]) { $("#latest-release").textContent = releases[0].tag_name; $("#release-note").textContent = new Date(releases[0].published_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
       else { $("#latest-release").textContent = "—"; $("#release-note").textContent = "No releases yet"; }
       if (runs.workflow_runs && runs.workflow_runs[0]) { const ok = runs.workflow_runs[0].conclusion === "success"; $("#build-health").innerHTML = `<i></i> ${ok ? "Passing" : "Needs attention"}`; $("#build-health").classList.toggle("failed", !ok); $("#build-note").textContent = runs.workflow_runs[0].name; }
-      $("#repo-count").textContent = (orgRepos && orgRepos.length) || "—";
-      const projectCount = projects && projects.ok ? projects.count : null;
-      $("#project-count").textContent = projectCount !== null && projectCount !== undefined ? String(projectCount) : "—";
       $("#sync-state").innerHTML = "<i></i> Live from GitHub"; $("#sync-state").classList.add("live");
       $("#last-updated").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     } catch (error) {
