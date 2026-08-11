@@ -201,6 +201,25 @@ const COMMANDS = {
     console.log(list.length ? list.join('\n') : '(no console errors)');
     console.log('pageerrors:', pageErrors.length);
   },
+  async routeapp(path) {
+    if (!context) return console.log('ERROR: launch first');
+    const src = fs.readFileSync(path, 'utf8');
+    await context.route('**/app.js', route => route.fulfill({ body: src, contentType: 'application/javascript' }));
+    console.log('route: app.js served from', path);
+  },
+  async netwatch() {
+    if (!page) return console.log('ERROR: launch first');
+    const seen = [];
+    const onResp = r => { if (r.status() >= 400) seen.push(r.status() + ' ' + r.url()); };
+    const onFail = r => seen.push('FAILED ' + r.url() + ' ' + ((r.failure() && r.failure().errorText) || ''));
+    page.on('response', onResp);
+    page.on('requestfailed', onFail);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(15000);   // let async data fetches settle
+    page.off('response', onResp);
+    page.off('requestfailed', onFail);
+    console.log('bad responses:', seen.length ? '\n' + seen.join('\n') : '(none)');
+  },
   async smoke() { await runSmoke(); },
   async quit() {
     if (browser) await browser.close().catch(() => {});

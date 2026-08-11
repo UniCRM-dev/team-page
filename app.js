@@ -15,6 +15,10 @@
   const issuesUrl = (repo, query = "") => `${repoUrl(repo)}/issues${query ? `?q=${encodeURIComponent(query)}` : ""}`;
   const discussionCategory = slug => `https://github.com/orgs/${owner}/discussions/categories/${slug}`;
   const newDiscussion = (slug, title = "", body = "") => `https://github.com/orgs/${owner}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
+  // Repo-scoped variants — the worker creates/reads discussions in repos.ideas ("skills"),
+  // so links and fallbacks must target that repo, not org-level discussions.
+  const repoDiscussionCategory = (repo, slug) => `https://github.com/${owner}/${repo}/discussions/categories/${slug}`;
+  const repoNewDiscussion = (repo, slug, title = "", body = "") => `https://github.com/${owner}/${repo}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
   const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
   const IDEA_STORAGE_KEY = "dashboard-submitted-ideas";
   function storedIdeas() {
@@ -68,9 +72,43 @@
     const cats = (config.discussions && config.discussions.categories) || {};
     const ideasUrl = configured ? discussionCategory(cats.ideas || "ideas") : "https://github.com/";
     const announcementUrl = configured ? discussionCategory(cats.announcements || "announcements") : "https://github.com/";
-    const ideas = storedIdeas().concat(config.ideas || []);
-    $("#idea-list").innerHTML = ideas.slice(0, 8).map(idea => `<a class="idea-item" href="${ideasUrl}" target="_blank" rel="noopener"><time>${monthDay(idea.date)}</time><div><h3>${escapeHtml(idea.title)}</h3><p>${escapeHtml(idea.area)}</p><small>Submitted by ${escapeHtml(idea.submittedBy)}</small></div><span class="arrow">↗</span></a>`).join("") || emptyState("Submit an idea and it will show up here.");
+    renderIdeas(ideasUrl);
     $("#announcement-list").innerHTML = (config.announcements || []).slice(0, 6).map(announcement => `<a class="announcement-item${announcement.pinned ? " pinned" : ""}" href="${announcementUrl}" target="_blank" rel="noopener"><div><h3>${escapeHtml(announcement.title)}</h3><p>${escapeHtml(announcement.body)}</p><small>${escapeHtml(announcement.author)} · ${monthDay(announcement.date)}</small></div>${announcement.pinned ? '<span class="pill amber">New</span>' : ""}</a>`).join("") || emptyState("Post an update in the announcements category.");
+  }
+
+  // Ideas list: GitHub Discussions when live data has loaded (window._liveIdeas),
+  // otherwise localStorage submissions + the static config.ideas[] seed list.
+  function renderIdeas(fallbackUrl) {
+    const ideas = window._liveIdeas || storedIdeas().concat(config.ideas || []);
+    const href = idea => escapeHtml(idea.url || fallbackUrl);
+    $("#idea-list").innerHTML = ideas.slice(0, 8).map(idea => `<a class="idea-item" href="${href(idea)}" target="_blank" rel="noopener"><time>${monthDay(idea.date)}</time><div><h3>${escapeHtml(idea.title)}</h3><p>${escapeHtml(idea.area)}</p><small>Submitted by ${escapeHtml(idea.submittedBy)}</small></div><span class="arrow">↗</span></a>`).join("") || emptyState("Submit an idea and it will show up here.");
+  }
+
+  // Fetch ideas from GitHub Discussions (via the worker) and merge with local submissions.
+  function ideaArea(body) {
+    const match = (body || "").match(/## Area\s*\n([^\n]+)/);
+    return match ? match[1].trim() : "Idea";
+  }
+  async function loadIdeas() {
+    if (!workerUrl) return;
+    try {
+      const slug = ((config.discussions || {}).categories || {}).ideas || "ideas";
+      const response = await fetch(`${workerUrl}/discussions?category=${encodeURIComponent(slug)}`, { headers: authHeaders(), cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.ok || !Array.isArray(data.discussions)) return;
+      const apiIdeas = data.discussions.map(discussion => ({
+        title: discussion.title,
+        area: ideaArea(discussion.body),
+        submittedBy: (discussion.author && discussion.author.login) || "Unknown",
+        date: discussion.createdAt,
+        url: discussion.url
+      }));
+      // Local submissions not yet on GitHub stay visible, deduped by title
+      const local = storedIdeas().filter(idea => !apiIdeas.some(api => api.title === idea.title));
+      window._liveIdeas = local.concat(apiIdeas);
+      renderIdeas(repoDiscussionCategory(repos.ideas, slug));
+    } catch (error) { /* keep localStorage + config fallback */ }
   }
 
   function configureLinks() {
@@ -138,8 +176,8 @@
     const devTasks = (byRepo.product || []).filter(issue => !issue.pull_request && !isClassified(issue));
     const salesTasks = (byRepo.sales || []).filter(issue => !issue.pull_request && !isClassified(issue));
 
-    $("#priority-count").textContent = priorities.length;
-    $("#blocker-count").textContent = blockers.length;
+    if ($("#priority-count")) $("#priority-count").textContent = priorities.length;
+    if ($("#blocker-count")) $("#blocker-count").textContent = blockers.length;
 
     $("#priority-list").innerHTML = priorities.slice(0, 8).map((issue, i) => {
       const ownerName = issueOwner(issue);
@@ -168,6 +206,18 @@
     };
     $("#dev-task-list").innerHTML = devTasks.slice(0, 12).map(issue => taskRow(issue, repos.product)).join("") || `<tr><td class="empty-state">No open tasks — create issues in ${repos.product}.</td></tr>`;
     $("#sales-task-list").innerHTML = salesTasks.slice(0, 12).map(issue => taskRow(issue, repos.sales)).join("") || `<tr><td class="empty-state">No open tasks — create issues in ${repos.sales}.</td></tr>`;
+  }
+
+  // Neutral metric-card state. Live data (or the failure state) overwrites these,
+  // so a fresh page load never shows stale hardcoded numbers.
+  function resetMetricCards() {
+    $("#open-issues").textContent = "—";
+    $("#open-prs").textContent = "—";
+    $("#pr-note").textContent = "Loading…";
+    $("#build-health").innerHTML = "—";
+    $("#build-note").textContent = "";
+    $("#latest-release").textContent = "—";
+    $("#release-note").textContent = "";
   }
 
   async function loadGitHubData() {
@@ -203,6 +253,9 @@
       $("#sync-state").innerHTML = "<i></i> Live from GitHub"; $("#sync-state").classList.add("live");
       $("#last-updated").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     } catch (error) {
+      $("#open-issues").textContent = "—";
+      $("#open-prs").textContent = "—";
+      $("#pr-note").textContent = "Retrying…";
       $("#sync-state").innerHTML = "<i></i> Live data unavailable"; $("#sync-state").title = "Could not reach the GitHub API. Check that the configured repos are public and try again.";
     }
   }
@@ -234,10 +287,13 @@
             if (result.url) window.open(result.url, "_blank", "noopener");
             showToast("Idea submitted to GitHub Discussions");
           }
-        } catch (error) { /* fall through to legacy path below */ }
+        } catch (error) {
+          console.warn("Worker idea submission failed:", error.message);
+          showToast("Opening GitHub — worker unavailable");
+        }
       }
       if (!submittedViaApi) {
-        const url = configured ? newDiscussion(ideasSlug, title, body) : "https://github.com/";
+        const url = configured ? repoNewDiscussion(repos.ideas, ideasSlug, title, body) : "https://github.com/";
         window.open(url, "_blank", "noopener");
         showToast("Idea prepared in GitHub Discussions");
       }
@@ -865,5 +921,5 @@
   }
 
   setupCalendar();
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); loadGitHubData(); scheduleAutoRefresh();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); scheduleAutoRefresh();
 })();

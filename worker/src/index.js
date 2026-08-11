@@ -5,7 +5,8 @@
  *   POST /login        — validate shared password, return session token
  *   GET  /me           — return {user} or 401  (token in Authorization header)
  *   GET  /github/*     — proxy to api.github.com  (token in Authorization header)
- *   POST /discussions  — create org discussion via GraphQL
+ *   POST /discussions  — create discussion via GraphQL
+ *   GET  /discussions  — list discussions by category (?category=ideas)
  *   GET  /messages     — list recent messages
  *   POST /messages     — post a message
  *   DELETE /messages/* — delete a message (dev role only)
@@ -57,6 +58,9 @@ export default {
       }
       if (method === "POST" && url.pathname === "/discussions") {
         return handleDiscussions(request, env);
+      }
+      if (method === "GET" && url.pathname === "/discussions") {
+        return handleListDiscussions(request, env);
       }
       if (method === "GET" && url.pathname === "/projects") {
         return handleProjectsCount(request, env);
@@ -476,6 +480,59 @@ async function handleDiscussions(request, env) {
       { error: "Could not create discussion. It may need to be submitted via GitHub directly." },
       request, env, 502
     );
+  }
+}
+
+// GET /discussions?category=ideas — list discussions in the configured repo
+async function handleListDiscussions(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  const url = new URL(request.url);
+  const category = url.searchParams.get("category") || "ideas";
+  const owner = env.DISCUSSIONS_OWNER || "UniCRM-dev";
+  const repo = env.DISCUSSIONS_REPO || "skills";
+
+  try {
+    const { categoryId } = await resolveCategory(owner, repo, category, token);
+
+    const query = `
+      query($owner: String!, $repo: String!, $catId: ID!) {
+        repository(owner: $owner, name: $repo) {
+          discussions(first: 50, orderBy: { field: CREATED_AT, direction: DESC }, categoryId: $catId) {
+            nodes { id title url createdAt author { login } body }
+          }
+        }
+      }`;
+
+    const result = await graphql(query, { owner, repo, catId: categoryId }, token);
+
+    if (result.errors) {
+      console.error("List discussions errors:", JSON.stringify(result.errors));
+      return corsResponse(
+        { error: "Failed to list discussions", detail: result.errors[0].message },
+        request, env, 502
+      );
+    }
+
+    const nodes = (result.data.repository.discussions.nodes || []).map(discussion => ({
+      id: discussion.id,
+      title: discussion.title,
+      url: discussion.url,
+      createdAt: discussion.createdAt,
+      author: discussion.author ? discussion.author.login : null,
+      body: discussion.body || "",
+    }));
+
+    return corsResponse({ ok: true, discussions: nodes }, request, env, 200);
+  } catch (err) {
+    console.error("List discussions error:", err.message);
+    return corsResponse({ error: "Could not list discussions" }, request, env, 502);
   }
 }
 
