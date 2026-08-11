@@ -58,18 +58,10 @@
     }
     const pipeline = config.pipeline || [];
     $("#pipeline-bars").innerHTML = pipeline.map(([name, count, width]) => `<div class="pipeline-row"><span>${escapeHtml(name)}</span><div><i style="width:${width}%"></i></div><b>${count}</b></div>`).join("") || emptyState("Configure pipeline stages in config.js");
-    const poll = config.poll || {};
     const cats = (config.discussions && config.discussions.categories) || {};
-    if (poll.question) {
-      const total = (poll.options || []).reduce((sum, option) => sum + (option.votes || 0), 0) || 1;
-      $("#poll-question").textContent = poll.question;
-      $("#poll-options").innerHTML = (poll.options || []).map(option => {
-        const pct = Math.round(((option.votes || 0) / total) * 100);
-        return `<a class="poll-option" href="${repoDiscussionCategory(repos.polls, cats.polls || "polls")}" target="_blank" rel="noopener"><span>${escapeHtml(option.label)}</span><div><i style="width:${pct}%"></i></div><b>${option.votes || 0}</b></a>`;
-      }).join("") || emptyState("Add poll options in config.js");
-    } else {
-      $("#poll-options").innerHTML = emptyState("Add a poll in config.js");
-    }
+    // The poll panel is filled live from the polls discussion category (loadPolls)
+    $("#poll-question").textContent = "";
+    $("#poll-options").innerHTML = emptyState("Loading latest poll…");
     const announcementUrl = configured ? discussionCategory(cats.announcements || "announcements") : "https://github.com/";
     renderIdeas();
     $("#announcement-list").innerHTML = (config.announcements || []).slice(0, 6).map(announcement => `<a class="announcement-item${announcement.pinned ? " pinned" : ""}" href="${announcementUrl}" target="_blank" rel="noopener"><div><h3>${escapeHtml(announcement.title)}</h3><p>${escapeHtml(announcement.body)}</p><small>${escapeHtml(announcement.author)} · ${monthDay(announcement.date)}</small></div>${announcement.pinned ? '<span class="pill amber">New</span>' : ""}</a>`).join("") || emptyState("Post an update in the announcements category.");
@@ -133,6 +125,42 @@
       window._liveIdeas = local.concat(apiIdeas);
       renderIdeas();
     } catch (error) { /* keep localStorage + config fallback */ }
+  }
+
+  // Poll panel: the latest discussion in the polls category is the active poll.
+  // Option rows link to the discussion so team members vote on GitHub; a
+  // free-text body renders as a blurb with a Vote on GitHub button.
+  function pollOptions(body) {
+    const lines = (body || "").split("\n").map(line => line.trim()).filter(Boolean);
+    const optionLines = lines.filter(line => /^[-*]\s+/.test(line) || /^\d+[.)]\s+/.test(line));
+    return optionLines.length >= 2 ? optionLines.map(line => line.replace(/^[-*]\s+/, "").replace(/^\d+[.)]\s+/, "")) : [];
+  }
+
+  function renderPoll(discussion) {
+    $("#poll-question").textContent = discussion.title || "Open question";
+    const options = pollOptions(discussion.body);
+    if (options.length) {
+      $("#poll-options").innerHTML = options.map(option => `<a class="poll-option" href="${discussion.url}" target="_blank" rel="noopener"><span>${escapeHtml(option)}</span><span class="arrow">↗</span></a>`).join("");
+    } else {
+      $("#poll-options").innerHTML = `<p class="poll-body-text">${escapeHtml(discussion.body)}</p><a class="button button-secondary button-small" href="${discussion.url}" target="_blank" rel="noopener">Vote on GitHub <span aria-hidden="true">↗</span></a>`;
+    }
+  }
+
+  async function loadPolls() {
+    if (!workerUrl) return;
+    const empty = () => { $("#poll-question").textContent = ""; $("#poll-options").innerHTML = emptyState("No active poll — post one in the polls category."); };
+    try {
+      const slug = ((config.discussions || {}).categories || {}).polls || "polls";
+      const response = await fetch(`${workerUrl}/discussions?category=${encodeURIComponent(slug)}`, { headers: authHeaders(), cache: "no-store" });
+      if (!response.ok) throw new Error("Polls fetch failed");
+      const data = await response.json();
+      if (!data.ok || !Array.isArray(data.discussions)) throw new Error("Polls response invalid");
+      const latest = data.discussions[0];
+      if (latest) renderPoll(latest); else empty();
+    } catch (error) {
+      $("#poll-question").textContent = "";
+      $("#poll-options").innerHTML = emptyState("Couldn't load the latest poll.");
+    }
   }
 
   function configureLinks() {
@@ -940,5 +968,5 @@
   }
 
   setupCalendar();
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); scheduleAutoRefresh();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); loadPolls(); scheduleAutoRefresh();
 })();

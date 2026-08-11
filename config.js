@@ -20,14 +20,6 @@ window.DASHBOARD_CONFIG = {
     repo: "wiki",
     folder: "docs"
   },
-  poll: {
-    question: "Should the partner beta launch in Sprint 09?",
-    options: [
-      { label: "Yes, on target", votes: 3 },
-      { label: "Push to Sprint 10", votes: 1 },
-      { label: "Not ready", votes: 0 }
-    ]
-  },
   ideas: [
     { title: "Automate the weekly pipeline digest into Slack", area: "Operations", submittedBy: "Chelsey", date: "2026-07-29" },
     { title: "Self-serve demo sandbox for prospects", area: "Sales", submittedBy: "Courtney", date: "2026-07-24" },
