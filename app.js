@@ -15,10 +15,9 @@
   const issuesUrl = (repo, query = "") => `${repoUrl(repo)}/issues${query ? `?q=${encodeURIComponent(query)}` : ""}`;
   const discussionCategory = slug => `https://github.com/orgs/${owner}/discussions/categories/${slug}`;
   const newDiscussion = (slug, title = "", body = "") => `https://github.com/orgs/${owner}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
-  // Repo-scoped variants — the worker creates/reads discussions in repos.ideas ("team-page-portal"),
-  // so links and fallbacks must target that repo, not org-level discussions.
+  // Repo-scoped variant — the worker creates/reads discussions in repos.ideas ("team-page-portal"),
+  // so links must target that repo, not org-level discussions.
   const repoDiscussionCategory = (repo, slug) => `https://github.com/${owner}/${repo}/discussions/categories/${slug}`;
-  const repoNewDiscussion = (repo, slug, title = "", body = "") => `https://github.com/${owner}/${repo}/discussions/new?category=${encodeURIComponent(slug)}${title ? `&title=${encodeURIComponent(title)}` : ""}${body ? `&body=${encodeURIComponent(body)}` : ""}`;
   const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
   const IDEA_STORAGE_KEY = "dashboard-submitted-ideas";
   function storedIdeas() {
@@ -271,7 +270,8 @@
       const body = `## Problem or opportunity\n${$("#idea-problem").value.trim()}\n\n## Area\n${$("#idea-area").value}\n\n## Submitted by\n${$("#idea-owner").value}\n\n---\nSubmitted from the company operations dashboard.`;
       const ideasSlug = ((config.discussions || {}).categories || {}).ideas || "ideas";
 
-      let submittedViaApi = false;
+      // Submit silently via the worker — never auto-open GitHub. The idea is
+      // also stored to localStorage below so it appears on the dashboard either way.
       if (workerUrl) {
         try {
           var headers = authHeaders();
@@ -282,20 +282,15 @@
             body: JSON.stringify({ title, body, category: ideasSlug })
           });
           if (response.ok) {
-            const result = await response.json();
-            submittedViaApi = true;
-            if (result.url) window.open(result.url, "_blank", "noopener");
             showToast("Idea submitted to GitHub Discussions");
+          } else {
+            console.warn("Worker idea submission failed:", response.status);
+            showToast("Idea saved locally — GitHub submission failed");
           }
         } catch (error) {
           console.warn("Worker idea submission failed:", error.message);
-          showToast("Opening GitHub — worker unavailable");
+          showToast("Idea saved locally — worker unavailable");
         }
-      }
-      if (!submittedViaApi) {
-        const url = configured ? repoNewDiscussion(repos.ideas, ideasSlug, title, body) : "https://github.com/";
-        window.open(url, "_blank", "noopener");
-        showToast("Idea prepared in GitHub Discussions");
       }
       const submitted = storedIdeas();
       submitted.unshift({ title, area: $("#idea-area").value, submittedBy: $("#idea-owner").value, date: new Date().toISOString() });
