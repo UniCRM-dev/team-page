@@ -48,8 +48,8 @@ window.DASHBOARD_CONFIG = {
     ["Negotiation", 3, 25]
   ],
   team: [
-    { name: "Shawn", role: "Developer", initials: "SH" },
-    { name: "Jesse", role: "Developer", initials: "JE" },
+    { name: "Shawn", role: "Developer", initials: "SH", github: "ShawnTamez8" },
+    { name: "Jesse", role: "Developer", initials: "JE", github: "jf26028" },
     { name: "Courtney", role: "Sales", initials: "CO" },
     { name: "Chelsey", role: "Sales", initials: "CH" }
   ],

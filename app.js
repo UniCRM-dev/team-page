@@ -110,14 +110,23 @@
       if (!response.ok) return;
       const data = await response.json();
       if (!data.ok || !Array.isArray(data.discussions)) return;
-      const apiIdeas = data.discussions.map(discussion => ({
-        title: discussion.title,
-        area: ideaArea(discussion.body),
-        submittedBy: (discussion.author && discussion.author.login) || "Unknown",
-        date: discussion.createdAt,
-        url: discussion.url,
-        body: discussion.body
-      }));
+      // The worker returns author as a GitHub login string; map known logins
+      // to team display names via config.team, falling back to the raw login.
+      const authorName = login => {
+        const member = (config.team || []).find(m => m.github === login);
+        return member ? member.name : login;
+      };
+      const apiIdeas = data.discussions.map(discussion => {
+        const author = typeof discussion.author === "string" ? discussion.author : (discussion.author && discussion.author.login);
+        return {
+          title: discussion.title,
+          area: ideaArea(discussion.body),
+          submittedBy: authorName(author) || "Unknown",
+          date: discussion.createdAt,
+          url: discussion.url,
+          body: discussion.body
+        };
+      });
       // Local submissions not yet on GitHub stay visible, deduped by title
       const local = storedIdeas().filter(idea => !apiIdeas.some(api => api.title === idea.title));
       window._liveIdeas = local.concat(apiIdeas);
