@@ -438,7 +438,7 @@ async function handleDiscussions(request, env) {
   }
 
   const owner = env.DISCUSSIONS_OWNER || "UniCRM-dev";
-  const repo = env.DISCUSSIONS_REPO || "skills";
+  const repo = env.DISCUSSIONS_REPO || "team-page";
 
   try {
     // Resolve repository + category
@@ -496,7 +496,7 @@ async function handleListDiscussions(request, env) {
   const url = new URL(request.url);
   const category = url.searchParams.get("category") || "ideas";
   const owner = env.DISCUSSIONS_OWNER || "UniCRM-dev";
-  const repo = env.DISCUSSIONS_REPO || "skills";
+  const repo = env.DISCUSSIONS_REPO || "team-page";
 
   try {
     const { categoryId } = await resolveCategory(owner, repo, category, token);
