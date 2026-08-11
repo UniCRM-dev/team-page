@@ -70,7 +70,7 @@
       $("#poll-options").innerHTML = emptyState("Add a poll in config.js");
     }
     const cats = (config.discussions && config.discussions.categories) || {};
-    const ideasUrl = configured ? discussionCategory(cats.ideas || "ideas") : "https://github.com/";
+    const ideasUrl = configured ? repoDiscussionCategory(repos.ideas, cats.ideas || "ideas") : "https://github.com/";
     const announcementUrl = configured ? discussionCategory(cats.announcements || "announcements") : "https://github.com/";
     renderIdeas(ideasUrl);
     $("#announcement-list").innerHTML = (config.announcements || []).slice(0, 6).map(announcement => `<a class="announcement-item${announcement.pinned ? " pinned" : ""}" href="${announcementUrl}" target="_blank" rel="noopener"><div><h3>${escapeHtml(announcement.title)}</h3><p>${escapeHtml(announcement.body)}</p><small>${escapeHtml(announcement.author)} · ${monthDay(announcement.date)}</small></div>${announcement.pinned ? '<span class="pill amber">New</span>' : ""}</a>`).join("") || emptyState("Post an update in the announcements category.");
@@ -130,7 +130,7 @@
     const pollsSlug = cats.polls || "polls";
     set("#polls-link", configured ? discussionCategory(pollsSlug) : org);
     set("#new-poll-link", configured ? newDiscussion(pollsSlug) : org);
-    set("#ideas-link", configured ? discussionCategory(cats.ideas || "ideas") : org);
+    set("#ideas-link", configured ? repoDiscussionCategory(repos.ideas, cats.ideas || "ideas") : org);
     set("#announcements-link", configured ? discussionCategory(cats.announcements || "announcements") : org);
     const repositoryLinks = [["Skills", repos.ideas]];
     $("#sidebar-repositories").innerHTML = repositoryLinks.map(([name, repo]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="nav-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M12 13h4"/><path d="M12 18h6a2 2 0 0 1 2 2v1"/><path d="M12 8h8"/><path d="M16 8V5a2 2 0 0 1 2-2"/><circle cx="16" cy="13" r=".5"/><circle cx="18" cy="3" r=".5"/><circle cx="20" cy="21" r=".5"/><circle cx="20" cy="8" r=".5"/></svg></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`).join("");
