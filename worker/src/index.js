@@ -38,6 +38,14 @@ export default {
 
     // ── Routing ─────────────────────────────────────────────────────
     try {
+      if (method === "GET" && url.pathname === "/") {
+        return json({
+          ok: true,
+          service: "unicrm-dashboard-proxy",
+          message: "API for the UniCRM team dashboard. Authenticate via /login, then call the endpoints below.",
+          endpoints: ["/me", "/github/*", "/discussions", "/projects", "/metrics", "/calendar/events", "/messages", "/documents"]
+        });
+      }
       if (method === "POST" && url.pathname === "/login") {
         return handleLogin(request, env);
       }
