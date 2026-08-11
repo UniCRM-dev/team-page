@@ -1,0 +1,32 @@
+name: Deploy Cloudflare Worker
+
+# Deploys the dashboard's API worker automatically when worker code changes,
+# so no one's machine is needed — GitHub's servers run the deploy.
+# Frontend-only changes (index.html/app.js/styles.css) skip this: GitHub Pages
+# rebuilds those by itself on every push to main.
+#
+# One-time setup: add two repository secrets (Settings → Secrets and variables →
+# Actions), otherwise the first run fails:
+#   CLOUDFLARE_API_TOKEN  — API token with "Workers Scripts: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID — your Cloudflare account ID
+# After adding them, re-run the failed job or use the manual "Deploy" button below.
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Cloudflare Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy

@@ -56,5 +56,6 @@ window.DASHBOARD_CONFIG = {
   worker: {
     url: "https://unicrm-dashboard-proxy.shawntamez.workers.dev",
     loginPage: "login.html"
-  }
+  },
+  refreshSeconds: 60
 };

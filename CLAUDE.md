@@ -14,6 +14,12 @@ No build step. Open `index.html` through any local web server (opening the file 
 python -m http.server 8000
 ```
 
+## Deployment
+
+- **Site (frontend):** GitHub Pages rebuilds automatically on every push to `main`. No action needed.
+- **Worker (API):** `.github/workflows/deploy-worker.yml` deploys automatically when files under `worker/` change, and has a manual "Deploy Cloudflare Worker" button (Actions tab — works from a phone browser). It requires the repo secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts: Edit permission) and `CLOUDFLARE_ACCOUNT_ID`. Worker secrets (`AUTH_PASSWORD`, `SESSION_SECRET`, `GITHUB_TOKEN`) are set via `wrangler secret put` and persist across deploys.
+- **Data:** everything shown on the dashboard is fetched live from GitHub/Google on page load, then refreshed every `config.js → refreshSeconds` seconds and whenever the tab regains focus. No deploy is needed for content changes — only for code changes.
+
 ## Architecture
 
 - `index.html` — all page structure/content regions (sidebar, hero, status strip, priorities/blockers, milestones/events, developer & sales workstream tabs, decisions, quick links, idea-submission dialog). Elements that get populated or rewired at runtime carry stable `id`s (e.g. `#priority-list`, `#sync-state`, `#sidebar-repositories`) — `app.js` looks these up directly.

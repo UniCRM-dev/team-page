@@ -850,6 +850,20 @@
   loadSessionUser();
   var monthLabel = $("#month-label");
   if (monthLabel) monthLabel.textContent = now.toLocaleDateString(undefined, { month: "long" });
+  function scheduleAutoRefresh() {
+    const seconds = config.refreshSeconds > 0 ? config.refreshSeconds : 60;
+    let refreshing = false;
+    const refresh = () => {
+      if (refreshing) return;
+      refreshing = true;
+      Promise.all([loadGitHubData(), loadCalendarEvents()])
+        .catch(() => {})
+        .then(() => { refreshing = false; });
+    };
+    setInterval(refresh, seconds * 1000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+  }
+
   setupCalendar();
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); loadGitHubData();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); loadGitHubData(); scheduleAutoRefresh();
 })();
