@@ -454,6 +454,9 @@ main > *,
 
 .hero-brief {
   align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   padding: 20px;
   border: 1px solid var(--hero-line);
   border-radius: 18px;
@@ -461,6 +464,10 @@ main > *,
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
   backdrop-filter: blur(12px);
 }
+/* Let the announcement area fill the stretched card so the "All updates"
+   link anchors to the bottom instead of floating above dead space. */
+.hero-announcements { flex: 1; }
+.hero-brief .empty-state { margin: 0; }
 .brief-heading span,
 .brief-heading strong { display: block; }
 .brief-heading span {
@@ -1358,6 +1365,8 @@ textarea { resize: vertical; }
   .hero-actions { margin-top: 20px; }
   .hero-actions .button { flex: 1; }
   .hero-brief { display: block; margin-top: 24px; padding: 17px; }
+  .hero-brief .empty-state { margin-top: 6px; }
+  .hero-brief > a { margin-top: 16px; }
   .status-strip article { padding: 16px 17px; }
   .section-grid { display: block; }
   .section-grid > * + * { margin-top: 14px; }
