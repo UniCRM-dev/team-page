@@ -238,7 +238,6 @@ th {
 .button-primary {
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 10px 24px -12px var(--accent);
 }
 .button-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
 
