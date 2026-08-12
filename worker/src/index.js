@@ -858,7 +858,14 @@ async function handleDeleteMessage(request, env, url) {
   }
 
   // Extract the message key from the URL path: /messages/msg:2024-...-abc123
-  const key = url.pathname.slice("/messages/".length);
+  // The client URL-encodes the id (colons → %3A), so decode the path segment
+  // or the lookup misses the raw key stored in KV.
+  let key;
+  try {
+    key = decodeURIComponent(url.pathname.slice("/messages/".length));
+  } catch {
+    return corsResponse({ error: "Invalid message ID" }, request, env, 400);
+  }
   if (!key) {
     return corsResponse({ error: "Message ID is required" }, request, env, 400);
   }
