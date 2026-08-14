@@ -1732,6 +1732,85 @@ progress::-moz-progress-bar {
 }
 #doc-viewer-dialog .dialog-actions { margin-top: 18px; }
 
+/* Rendered document content (docx via mammoth, markdown via marked) */
+.doc-viewer-doc {
+  justify-self: stretch;
+  align-self: start;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.65;
+  max-height: 52vh;
+  overflow: auto;
+}
+.doc-viewer-doc h1,
+.doc-viewer-doc h2,
+.doc-viewer-doc h3,
+.doc-viewer-doc h4 {
+  margin: 1.2em 0 0.5em;
+  line-height: 1.25;
+  color: var(--text);
+}
+.doc-viewer-doc h1:first-child,
+.doc-viewer-doc h2:first-child,
+.doc-viewer-doc h3:first-child,
+.doc-viewer-doc h4:first-child,
+.doc-viewer-doc p:first-child { margin-top: 0; }
+.doc-viewer-doc h1 { font-size: 1.5em; }
+.doc-viewer-doc h2 { font-size: 1.25em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
+.doc-viewer-doc h3 { font-size: 1.1em; }
+.doc-viewer-doc h4 { font-size: 1em; color: var(--text-2); }
+.doc-viewer-doc p { margin: 0.6em 0; }
+.doc-viewer-doc ul,
+.doc-viewer-doc ol { margin: 0.6em 0; padding-left: 1.6em; }
+.doc-viewer-doc li { margin: 0.2em 0; }
+.doc-viewer-doc a { color: var(--accent); text-decoration: none; }
+.doc-viewer-doc a:hover { text-decoration: underline; }
+.doc-viewer-doc img { max-width: 100%; height: auto; border-radius: var(--r-sm); }
+.doc-viewer-doc code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.15em 0.4em;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+}
+.doc-viewer-doc pre {
+  margin: 0.8em 0;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: auto;
+}
+.doc-viewer-doc pre code { padding: 0; background: none; }
+.doc-viewer-doc blockquote {
+  margin: 0.8em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-2);
+}
+.doc-viewer-doc hr { border: 0; border-top: 1px solid var(--border); margin: 1.2em 0; }
+.doc-viewer-doc table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  width: 100%;
+  font-size: 0.95em;
+}
+.doc-viewer-doc th,
+.doc-viewer-doc td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-viewer-doc th { background: var(--surface-2); font-weight: 600; }
+
 /* ============================================================
    Calendar
    ============================================================ */

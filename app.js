@@ -555,7 +555,9 @@
     var ext = (name.split(".").pop() || "").toLowerCase();
     if (["png", "jpg", "jpeg", "gif", "webp", "svg"].indexOf(ext) !== -1) return "image";
     if (ext === "pdf") return "pdf";
-    if (["txt", "md", "csv", "log"].indexOf(ext) !== -1) return "text";
+    if (ext === "docx") return "docx";
+    if (ext === "md") return "md";
+    if (["txt", "csv", "log"].indexOf(ext) !== -1) return "text";
     return "other";
   }
 
@@ -581,6 +583,62 @@
     var viewer = $("#doc-viewer-dialog");
     if (viewer && viewer.open) viewer.close();
     viewerCleanup();
+  }
+
+  // Lazily load a vendored script once — mammoth/marked are only fetched the
+  // first time the viewer opens a file type that needs them.
+  var lazyScripts = {};
+  function lazyLoadScript(src) {
+    if (lazyScripts[src]) return lazyScripts[src];
+    lazyScripts[src] = new Promise(function (resolve, reject) {
+      var script = document.createElement("script");
+      script.src = src;
+      script.onload = function () { resolve(); };
+      script.onerror = function () { reject(new Error("Failed to load " + src)); };
+      document.head.appendChild(script);
+    });
+    return lazyScripts[src];
+  }
+
+  // Escape markdown source before parsing so raw HTML embedded in a doc stays inert.
+  function escapeMarkdownSource(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  async function renderMarkdownViewer(body, text) {
+    await lazyLoadScript("vendor/marked.min.js");
+    body.innerHTML = '<div class="doc-viewer-doc">' + marked.parse(escapeMarkdownSource(text)) + '</div>';
+  }
+
+  async function renderDocxViewer(body, arrayBuffer) {
+    await lazyLoadScript("vendor/mammoth.browser.min.js");
+    var result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+    body.innerHTML = '<div class="doc-viewer-doc">' + result.value + '</div>';
+  }
+
+  // "Open in new tab" button, shown only for PDFs — helps mobile webviews
+  // where the embedded viewer is flaky.
+  var viewerOpenTabBtn = null;
+  function viewerOpenTab() {
+    if (!viewerUrl) return;
+    window.open(viewerUrl, "_blank", "noopener");
+  }
+  function viewerSetOpenTab(show) {
+    var actions = $("#doc-viewer-dialog .dialog-actions");
+    var downloadBtn = $("#doc-viewer-download");
+    if (show) {
+      if (viewerOpenTabBtn) return;
+      viewerOpenTabBtn = document.createElement("button");
+      viewerOpenTabBtn.type = "button";
+      viewerOpenTabBtn.id = "doc-viewer-open-tab";
+      viewerOpenTabBtn.className = "button button-secondary";
+      viewerOpenTabBtn.textContent = "Open in new tab ↗";
+      viewerOpenTabBtn.addEventListener("click", viewerOpenTab);
+      actions.insertBefore(viewerOpenTabBtn, downloadBtn);
+    } else if (viewerOpenTabBtn) {
+      viewerOpenTabBtn.remove();
+      viewerOpenTabBtn = null;
+    }
   }
 
   async function openDocument(path, size) {
@@ -610,13 +668,23 @@
 
       var type = viewerPreviewType(name);
       if (type === "image") {
+        viewerSetOpenTab(false);
         body.innerHTML = '<img class="doc-viewer-img" src="' + viewerUrl + '" alt="' + escapeHtml(name) + '">';
       } else if (type === "pdf") {
+        viewerSetOpenTab(true);
         body.innerHTML = '<iframe class="doc-viewer-frame" src="' + viewerUrl + '" title="' + escapeHtml(name) + '"></iframe>';
+      } else if (type === "docx") {
+        viewerSetOpenTab(false);
+        await renderDocxViewer(body, await blob.arrayBuffer());
+      } else if (type === "md") {
+        viewerSetOpenTab(false);
+        await renderMarkdownViewer(body, await blob.text());
       } else if (type === "text") {
+        viewerSetOpenTab(false);
         var text = await blob.text();
         body.innerHTML = '<pre class="doc-viewer-text">' + escapeHtml(text) + '</pre>';
       } else {
+        viewerSetOpenTab(false);
         body.innerHTML = emptyState("No preview for ." + escapeHtml((name.split(".").pop() || "file")) + " files — use Download to save it.");
       }
     } catch (err) {
