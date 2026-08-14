@@ -79,8 +79,10 @@ worker locally (one shell):
 
 ```bash
 cd worker
-grep -E '^(AUTH_PASSWORD|SESSION_SECRET|GITHUB_TOKEN)=' ../.env \
-  | cut -d= -f2- | tr -d '"' | tr -d ' ' | tr -d '\r' > .dev.vars
+# Keep the KEY= prefix (no cut -f2-) — .dev.vars needs KEY=value lines.
+# Empty ALLOWED_ORIGINS puts the local worker in dev mode (any origin).
+grep -E '^(AUTH_PASSWORD|SESSION_SECRET|GITHUB_TOKEN)=' ../.env | tr -d '\r' > .dev.vars
+printf 'ALLOWED_ORIGINS=\n' >> .dev.vars
 npx wrangler dev --port 8787
 ```
 
