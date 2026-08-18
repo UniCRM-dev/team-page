@@ -44,7 +44,7 @@ export default {
           ok: true,
           service: "unicrm-dashboard-proxy",
           message: "API for the UniCRM team dashboard. Authenticate via /login, then call the endpoints below.",
-          endpoints: ["/me", "/github/*", "/discussions", "/projects", "/metrics", "/calendar/events", "/messages", "/documents"]
+          endpoints: ["/me", "/github/*", "/discussions", "/projects", "/metrics", "/calendar/events", "/messages", "/documents", "/tasks"]
         });
       }
       if (method === "POST" && url.pathname === "/login") {
@@ -64,6 +64,9 @@ export default {
       }
       if (method === "GET" && url.pathname === "/projects") {
         return handleProjectsCount(request, env);
+      }
+      if (method === "POST" && url.pathname === "/tasks") {
+        return handleCreateTask(request, env);
       }
       if (method === "GET" && url.pathname === "/metrics") {
         return handleOrgMetrics(request, env);
@@ -633,6 +636,136 @@ async function handleProjectsCount(request, env) {
   } catch (err) {
     console.error("Projects count fetch failed:", err.message);
     return corsResponse({ error: "Could not count projects" }, request, env, 502);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// POST /tasks — create an issue and add it to a project's backlog
+// ═══════════════════════════════════════════════════════════════════
+
+async function handleCreateTask(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return corsResponse({ error: "Invalid JSON body" }, request, env, 400);
+  }
+
+  const title = (body.title || "").trim();
+  const description = (body.description || "").trim();
+  const projectNumber = parseInt(body.projectNumber, 10);
+  if (!title || !projectNumber) {
+    return corsResponse({ error: "title and projectNumber are required" }, request, env, 400);
+  }
+  if (title.length > 120) {
+    return corsResponse({ error: "Title is too long (max 120 characters)" }, request, env, 400);
+  }
+
+  const owner = env.DISCUSSIONS_OWNER || "UniCRM-dev";
+  const repo = env.TASKS_REPO || "wiki";
+
+  try {
+    // Resolve the project (by number) and the tasks repo in one query
+    const lookup = `
+      query($owner: String!, $repo: String!) {
+        organization(login: $owner) {
+          projectsV2(first: 50) { nodes { id number } }
+        }
+        repository(owner: $owner, name: $repo) { id }
+      }`;
+    const result = await graphql(lookup, { owner, repo }, token);
+    if (result.errors) throw new Error(result.errors[0].message);
+    const project = result.data.organization.projectsV2.nodes.find(p => p.number === projectNumber);
+    if (!project) throw new Error(`Project #${projectNumber} not found in ${owner}`);
+    const repositoryId = result.data.repository.id;
+
+    // Create the issue — tasks live in the operations repo
+    const createResult = await graphql(
+      `mutation($repositoryId: ID!, $title: String!, $body: String!) {
+        createIssue(input: { repositoryId: $repositoryId, title: $title, body: $body }) {
+          issue { id number url }
+        }
+      }`,
+      { repositoryId, title, body: description },
+      token
+    );
+    if (createResult.errors) throw new Error(createResult.errors[0].message);
+    const issue = createResult.data.createIssue.issue;
+
+    // Add it to the project, then pin Status to Backlog
+    const addResult = await graphql(
+      `mutation($projectId: ID!, $contentId: ID!) {
+        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+          item { id }
+        }
+      }`,
+      { projectId: project.id, contentId: issue.id },
+      token
+    );
+    if (addResult.errors) throw new Error(addResult.errors[0].message);
+    const itemId = addResult.data.addProjectV2ItemById.item.id;
+
+    await setProjectStatus(token, project.id, itemId, "Backlog");
+
+    return corsResponse({
+      ok: true,
+      url: issue.url,
+      projectUrl: `https://github.com/orgs/${owner}/projects/${projectNumber}`,
+      issue: { id: issue.id, number: issue.number },
+      item: { id: itemId, projectId: project.id },
+    }, request, env, 201);
+  } catch (err) {
+    console.error("Create task error:", err.message);
+    return corsResponse({ error: "Could not create the task" }, request, env, 502);
+  }
+}
+
+// Set a single-select field (Status) to a named option — best-effort.
+// New items land in the Backlog group by default anyway, so a project
+// without a matching field/option is not an error.
+async function setProjectStatus(token, projectId, itemId, optionName) {
+  const fieldsQuery = `
+    query($projectId: ID!) {
+      node(id: $projectId) {
+        ... on ProjectV2 {
+          fields(first: 30) {
+            nodes {
+              ... on ProjectV2SingleSelectField { id name options { id name } }
+            }
+          }
+        }
+      }
+    }`;
+  try {
+    const result = await graphql(fieldsQuery, { projectId }, token);
+    if (result.errors) return;
+    const fields = (result.data.node.fields.nodes || []).filter(f => f.options);
+    const statusField = fields.find(f => f.name === "Status");
+    if (!statusField) return;
+    const option = statusField.options.find(o => o.name === optionName);
+    if (!option) return;
+    await graphql(
+      `mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+        updateProjectV2ItemFieldValue(input: {
+          projectId: $projectId,
+          itemId: $itemId,
+          fieldId: $fieldId,
+          value: { singleSelectOptionId: $optionId }
+        }) { projectV2Item { id } }
+      }`,
+      { projectId, itemId, fieldId: statusField.id, optionId: option.id },
+      token
+    );
+  } catch (err) {
+    console.error("Set project status error:", err.message);
   }
 }
 

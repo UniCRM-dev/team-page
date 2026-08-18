@@ -364,6 +364,49 @@
       renderStaticData();
       dialog.close(); event.currentTarget.reset();
     });
+    // "Create GitHub task" — opens a dialog (worker configured) instead of
+    // linking out, so tasks are filed straight into the project backlog.
+    const taskDialog = $("#task-dialog");
+    const newTask = $("#new-task-link");
+    if (newTask && taskDialog && workerUrl && configured) {
+      newTask.addEventListener("click", event => { event.preventDefault(); taskDialog.showModal(); });
+    }
+    const taskForm = $("#task-form");
+    if (taskForm && workerUrl) {
+      taskForm.addEventListener("submit", async event => {
+        if (event.submitter && event.submitter.value === "cancel") return;
+        event.preventDefault();
+        if (!event.currentTarget.reportValidity()) return;
+        const title = $("#task-title-input").value.trim();
+        const description = $("#task-description").value.trim();
+        const submit = $("#submit-task");
+        submit.disabled = true;
+        submit.textContent = "Creating…";
+        try {
+          var headers = authHeaders();
+          headers["Content-Type"] = "application/json";
+          const response = await fetch(`${workerUrl}/tasks`, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({ title, description, projectNumber: gh.taskProjectNumber || 1 })
+          });
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || "Could not create the task");
+          }
+          showToast("Task added to the backlog");
+          taskDialog.close();
+          event.currentTarget.reset();
+          loadActivity();  // the new issue shows up in the activity feed
+        } catch (error) {
+          showToast(error.message || "Could not create the task. Try again.");
+        } finally {
+          submit.disabled = false;
+          submit.textContent = "Create task";
+        }
+      });
+    }
+
     const tabs = $$("[role=tab]");
     tabs.forEach(tab => tab.addEventListener("click", () => {
       tabs.forEach(t => { const selected = t === tab; t.setAttribute("aria-selected", selected); $(`#${t.getAttribute("aria-controls")}`).hidden = !selected; });

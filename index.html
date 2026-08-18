@@ -296,6 +296,22 @@
     </div>
   </dialog>
 
+  <dialog id="task-dialog" aria-labelledby="task-title">
+    <form method="dialog" id="task-form">
+      <div class="dialog-heading">
+        <div><p class="kicker">Tasks</p><h2 id="task-title">Create a GitHub task</h2></div>
+        <button class="icon-button" type="submit" value="cancel" formnovalidate aria-label="Close dialog">×</button>
+      </div>
+      <p class="dialog-copy">Creates an issue in the wiki repo and adds it to the team backlog on GitHub Projects.</p>
+      <label>Title<input id="task-title-input" name="title" required maxlength="120" placeholder="A concise, action-oriented title"></label>
+      <label>Description<textarea id="task-description" name="description" rows="5" placeholder="What needs to be done, why it matters, and any useful context."></textarea></label>
+      <div class="dialog-actions">
+        <button class="button button-secondary" type="submit" value="cancel" formnovalidate>Cancel</button>
+        <button class="button button-primary" id="submit-task" value="default">Create task</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="upload-dialog" aria-labelledby="upload-title">
     <form method="dialog" id="upload-form">
       <div class="dialog-heading">

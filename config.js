@@ -12,6 +12,7 @@ window.DASHBOARD_CONFIG = {
       documents: "wiki"
     },
     projectNumber: 1,
+    taskProjectNumber: 2,
     labels: { priority: "priority", blocker: "blocked", milestone: "milestone", decision: "decision", feedback: "customer-feedback" }
   },
   discussions: {
