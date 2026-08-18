@@ -365,7 +365,7 @@
       renderStaticData();
       dialog.close(); form.reset();
     });
-    // "Create GitHub task" — opens a dialog (worker configured) instead of
+    // "Create task" — opens a dialog (worker configured) instead of
     // linking out, so tasks are filed straight into the project backlog.
     // Fill the dialog's repo dropdown from the org's repositories (proxy
     // path), falling back to the configured repos.
