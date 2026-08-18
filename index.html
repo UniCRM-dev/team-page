@@ -17,7 +17,9 @@
       document.documentElement.dataset.theme = stored === "light" || stored === "dark" ? stored : (dark ? "dark" : "light");
     })();
   </script>
-  <script src="config.js"></script>
+  <!-- Bump the ?v= on every deploy of these assets: GitHub Pages caches them
+       10 minutes (max-age=600), and stale JS with fresh HTML breaks the page. -->
+  <script src="config.js?v=2"></script>
   <style>html[data-auth="checking"] body { visibility: hidden; }</style>
   <script>
     // Auth gate — check for valid session before revealing the dashboard.
@@ -47,8 +49,8 @@
         });
     })();
   </script>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="sidebar.css">
+  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="sidebar.css?v=2">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -375,6 +377,6 @@
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>
