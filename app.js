@@ -331,7 +331,8 @@
     $("#idea-form").addEventListener("submit", async event => {
       if (event.submitter && event.submitter.value === "cancel") return;
       event.preventDefault();
-      if (!event.currentTarget.reportValidity()) return;
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
       const title = $("#idea-title-input").value.trim();
       const body = `## Problem or opportunity\n${$("#idea-problem").value.trim()}\n\n## Area\n${$("#idea-area").value}\n\n## Submitted by\n${$("#idea-owner").value}\n\n---\nSubmitted from the company operations dashboard.`;
       const ideasSlug = ((config.discussions || {}).categories || {}).ideas || "ideas";
@@ -362,21 +363,48 @@
       submitted.unshift({ title, area: $("#idea-area").value, submittedBy: $("#idea-owner").value, date: new Date().toISOString() });
       try { localStorage.setItem(IDEA_STORAGE_KEY, JSON.stringify(submitted)); } catch (error) { /* storage unavailable */ }
       renderStaticData();
-      dialog.close(); event.currentTarget.reset();
+      dialog.close(); form.reset();
     });
     // "Create GitHub task" — opens a dialog (worker configured) instead of
     // linking out, so tasks are filed straight into the project backlog.
+    // Fill the dialog's repo dropdown from the org's repositories (proxy
+    // path), falling back to the configured repos.
+    async function loadTaskRepos() {
+      const select = $("#task-repo");
+      const submitBtn = $("#submit-task");
+      if (!select || !configured) return;
+      // Disable until the list is ready so a submit in the loading window
+      // can't silently fall back to the default repo.
+      select.disabled = true;
+      if (submitBtn) submitBtn.disabled = true;
+      let names = [];
+      try {
+        const list = await github(`/orgs/${owner}/repos?per_page=100`);
+        if (Array.isArray(list)) names = list.map(r => r.name).sort();
+      } catch (error) { /* fall back below */ }
+      if (!names.length) {
+        names = Object.keys(repos).map(key => repos[key]).filter((name, i, arr) => name && arr.indexOf(name) === i).sort();
+      }
+      select.innerHTML = names.map(name => `<option${name === repos.operations ? " selected" : ""}>${escapeHtml(name)}</option>`).join("") || "<option>No repositories</option>";
+      select.disabled = false;
+      if (submitBtn) submitBtn.disabled = false;
+    }
     const taskDialog = $("#task-dialog");
     const newTask = $("#new-task-link");
     if (newTask && taskDialog && workerUrl && configured) {
-      newTask.addEventListener("click", event => { event.preventDefault(); taskDialog.showModal(); });
+      newTask.addEventListener("click", event => {
+        event.preventDefault();
+        loadTaskRepos();
+        taskDialog.showModal();
+      });
     }
     const taskForm = $("#task-form");
     if (taskForm && workerUrl) {
       taskForm.addEventListener("submit", async event => {
         if (event.submitter && event.submitter.value === "cancel") return;
         event.preventDefault();
-        if (!event.currentTarget.reportValidity()) return;
+        const form = event.currentTarget;
+        if (!form.reportValidity()) return;
         const title = $("#task-title-input").value.trim();
         const description = $("#task-description").value.trim();
         const submit = $("#submit-task");
@@ -388,7 +416,7 @@
           const response = await fetch(`${workerUrl}/tasks`, {
             method: "POST",
             headers: headers,
-            body: JSON.stringify({ title, description, projectNumber: gh.taskProjectNumber || 1 })
+            body: JSON.stringify({ title, description, repo: $("#task-repo").value, projectNumber: gh.taskProjectNumber || 1 })
           });
           if (!response.ok) {
             const data = await response.json().catch(() => ({}));
@@ -396,7 +424,7 @@
           }
           showToast("Task added to the backlog");
           taskDialog.close();
-          event.currentTarget.reset();
+          form.reset();
           loadActivity();  // the new issue shows up in the activity feed
         } catch (error) {
           showToast(error.message || "Could not create the task. Try again.");
@@ -417,7 +445,9 @@
     // Mobile webviews often ignore target="_blank" and navigate in place —
     // open external links explicitly in a new tab; if the browser blocks
     // that (window.open returns null), fall back to the default navigation.
+    // Skip clicks another handler already consumed (e.g. the task dialog).
     document.addEventListener("click", event => {
+      if (event.defaultPrevented) return;
       const link = event.target.closest ? event.target.closest('a[target="_blank"]') : null;
       if (!link) return;
       const opened = window.open(link.href, "_blank");

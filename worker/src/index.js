@@ -661,6 +661,7 @@ async function handleCreateTask(request, env) {
 
   const title = (body.title || "").trim();
   const description = (body.description || "").trim();
+  const repo = (body.repo || "").trim() || env.TASKS_REPO || "wiki";
   const projectNumber = parseInt(body.projectNumber, 10);
   if (!title || !projectNumber) {
     return corsResponse({ error: "title and projectNumber are required" }, request, env, 400);
@@ -668,16 +669,20 @@ async function handleCreateTask(request, env) {
   if (title.length > 120) {
     return corsResponse({ error: "Title is too long (max 120 characters)" }, request, env, 400);
   }
+  if (!/^[A-Za-z0-9._-]+$/.test(repo)) {
+    return corsResponse({ error: "Invalid repository name" }, request, env, 400);
+  }
 
   const owner = env.DISCUSSIONS_OWNER || "UniCRM-dev";
-  const repo = env.TASKS_REPO || "wiki";
 
   try {
-    // Resolve the project (by number) and the tasks repo in one query
+    // Resolve the project (by number) and the task's repo in one query,
+    // and confirm the repo belongs to the org
     const lookup = `
       query($owner: String!, $repo: String!) {
         organization(login: $owner) {
           projectsV2(first: 50) { nodes { id number } }
+          repositories(first: 100) { nodes { name } }
         }
         repository(owner: $owner, name: $repo) { id }
       }`;
@@ -685,9 +690,12 @@ async function handleCreateTask(request, env) {
     if (result.errors) throw new Error(result.errors[0].message);
     const project = result.data.organization.projectsV2.nodes.find(p => p.number === projectNumber);
     if (!project) throw new Error(`Project #${projectNumber} not found in ${owner}`);
+    if (!result.data.organization.repositories.nodes.some(r => r.name === repo)) {
+      throw new Error(`Repository "${repo}" not found in ${owner}`);
+    }
     const repositoryId = result.data.repository.id;
 
-    // Create the issue — tasks live in the operations repo
+    // Create the issue in the selected repo
     const createResult = await graphql(
       `mutation($repositoryId: ID!, $title: String!, $body: String!) {
         createIssue(input: { repositoryId: $repositoryId, title: $title, body: $body }) {
