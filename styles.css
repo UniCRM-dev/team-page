@@ -662,6 +662,7 @@ button.idea-item:hover > .arrow { color: var(--accent); }
 .pill.amber { background: var(--amber-soft); color: var(--amber-ink); }
 .pill.blue  { background: var(--blue-soft);  color: var(--blue-ink); }
 .pill.red   { background: var(--red-soft);   color: var(--red-ink); }
+.pill.slate { background: var(--slate-soft); color: var(--slate); }
 
 /* Priorities */
 .priority-item {
@@ -1828,3 +1829,61 @@ progress::-moz-progress-bar {
 .cal-link:hover { color: var(--accent); }
 #cal-events-list .event-item:first-child { border-top: 0; }
 #cal-events-panel .panel-heading { margin-bottom: 0; }
+
+/* ============================================================
+   Latest activity
+   ============================================================ */
+
+.activity-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+  margin-inline: -10px;
+  border-radius: var(--r-sm);
+  border-top: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  transition: background .14s ease;
+}
+.activity-item:first-child { border-top: 0; }
+.activity-item:hover { background: var(--surface-2); transform: translateX(2px); }
+
+.activity-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: var(--blue-soft);
+  color: var(--blue-ink);
+}
+.activity-icon.tone-green { background: var(--green-soft); color: var(--green-ink); }
+.activity-icon.tone-amber { background: var(--amber-soft); color: var(--amber-ink); }
+.activity-icon.tone-slate { background: var(--slate-soft); color: var(--slate); }
+
+.activity-copy { min-width: 0; }
+.activity-copy h3 {
+  margin: 0 0 3px;
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-copy p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+.activity-dot { color: var(--text-3); font-style: normal; }
+.activity-copy time { color: var(--text-3); font-family: var(--font-mono); font-size: 10.5px; }
+
+@media (max-width: 480px) {
+  .activity-item { grid-template-columns: 30px minmax(0, 1fr); }
+  .activity-item > .pill { display: none; }
+}

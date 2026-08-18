@@ -195,6 +195,7 @@
     set("#dev-board-link", project); set("#sales-board-link", project);
     set("#issues-link", configured ? `${orgUrl()}/issues` : org);
     set("#prs-link", configured ? `${orgUrl()}/pulls` : org);
+    set("#activity-link", org);
     set("#actions-link", configured ? `${repoUrl(repos.operations)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
     set("#sidebar-wiki-link", configured ? `${repoUrl(repos.operations)}/wiki` : org);
     set("#sidebar-web-link", configured ? repoUrl(repos.sales) : org);
@@ -1015,6 +1016,147 @@
     loadCalendarEvents();
   }
 
+  // ── Latest activity ───────────────────────────────────────────
+
+  const ACTIVITY_ICONS = {
+    pr: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>',
+    issue: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>',
+    doc: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>',
+    repo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+    member: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>'
+  };
+
+  // Map one GitHub org event to one feed item, or null for events we skip
+  // (pushes, watches, forks, branch/tag creates, discussion events…).
+  // PushEvents carry no commit messages in the org feed, and document
+  // uploads come from the wiki commits API instead (activityFromDocCommit).
+  function activityFromEvent(event) {
+    const repoName = event.repo && event.repo.name ? event.repo.name.split("/").pop() : "";
+    const actor = event.actor ? event.actor.login : null;
+    const at = event.created_at;
+    const payload = event.payload || {};
+    const base = { by: actor, repo: repoName, at };
+
+    if (event.type === "PullRequestEvent") {
+      const pr = payload.pull_request || {};
+      const merged = pr.merged === true;
+      const action = payload.action === "closed" ? (merged ? "merged" : "closed") : payload.action;
+      if (action !== "opened" && action !== "merged" && action !== "closed") return null;
+      return Object.assign({}, base, {
+        type: "pr",
+        tone: action === "merged" ? "green" : action === "opened" ? "blue" : "slate",
+        pill: action,
+        title: pr.title || "Pull request #" + (pr.number || "?"),
+        url: pr.html_url || repoUrl(repoName),
+        extra: pr.number ? "#" + pr.number : ""
+      });
+    }
+
+    if (event.type === "IssuesEvent") {
+      const issue = payload.issue || {};
+      const action = payload.action;
+      if (action !== "opened" && action !== "closed" && action !== "reopened") return null;
+      return Object.assign({}, base, {
+        type: "issue",
+        tone: action === "closed" ? "green" : "blue",
+        pill: action === "closed" ? "completed" : action,
+        title: issue.title || "Issue #" + (issue.number || "?"),
+        url: issue.html_url || repoUrl(repoName),
+        extra: issue.number ? "#" + issue.number : ""
+      });
+    }
+
+    if (event.type === "CreateEvent" && payload.ref_type === "repository") {
+      return Object.assign({}, base, {
+        type: "repo",
+        tone: "amber",
+        pill: "new repo",
+        title: repoName,
+        url: repoUrl(repoName),
+        extra: ""
+      });
+    }
+
+    if (event.type === "MemberEvent") {
+      // The event actor added the member — credit the person who joined.
+      // Member events are attached to an arbitrary repo; drop it from meta.
+      const member = (payload.member && payload.member.login) || actor;
+      return Object.assign({}, base, {
+        type: "member",
+        tone: "blue",
+        pill: "member",
+        title: authorName(member) + " joined the org",
+        by: member,
+        repo: "",
+        url: `https://github.com/${member}`,
+        extra: ""
+      });
+    }
+
+    return null;
+  }
+
+  // A commit in the wiki's documents folder is a document upload — the
+  // worker commits them as "Upload <name> (by <name>)". Prefer the GitHub
+  // author (maps to a team name via config.team), fall back to the
+  // committer's display name.
+  function activityFromDocCommit(commit) {
+    const details = commit.commit || {};
+    const message = (details.message || "").trim();
+    return {
+      type: "doc",
+      tone: "slate",
+      pill: "docs",
+      title: message.split("\n")[0] || "Document uploaded",
+      by: (commit.author && commit.author.login) || (details.author && details.author.name) || null,
+      repo: repos.operations,
+      at: (details.author && details.author.date) || commit.created_at || "",
+      url: commit.html_url || repoUrl(repos.operations),
+      extra: ""
+    };
+  }
+
+  function renderActivityItem(item) {
+    const who = item.by ? authorName(item.by) : "Unknown";
+    return '<a class="activity-item" href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener">'
+      + '<span class="activity-icon tone-' + item.tone + '" aria-hidden="true">' + ACTIVITY_ICONS[item.type] + '</span>'
+      + '<div class="activity-copy"><h3>' + escapeHtml(item.title) + '</h3>'
+      + '<p>' + avatar(who) + ' ' + escapeHtml(who)
+      + (item.repo ? '<i class="activity-dot">·</i><span>' + escapeHtml(item.repo) + (item.extra ? " " + escapeHtml(item.extra) : "") + '</span>' : "")
+      + '<i class="activity-dot">·</i><time>' + timeAgo(item.at) + '</time></p></div>'
+      + '<span class="pill ' + item.tone + '">' + escapeHtml(item.pill) + '</span>'
+      + '</a>';
+  }
+
+  // Org-wide feed from two sources, merged newest-first:
+  //   1. The org events API (worker proxies the user-scoped feed so
+  //      private-repo events are included) — PRs, issues, new repos.
+  //   2. The wiki's docs-folder commits — document uploads, which the
+  //      events feed can't describe (push payloads carry no messages).
+  async function loadActivity() {
+    const container = $("#activity-list");
+    if (!container) return;
+    if (!configured) { container.innerHTML = emptyState("Fill in config.js to enable the activity feed."); return; }
+    container.innerHTML = emptyState("Loading latest activity…");
+    try {
+      const folder = ((config.documents || {}).folder || "docs").split("/").filter(Boolean).join("/");
+      const [events, docCommits] = await Promise.all([
+        github(`/orgs/${owner}/events?per_page=100`).catch(() => null),
+        github(`/repos/${owner}/${repos.operations}/commits?path=${encodeURIComponent(folder)}&per_page=10`).catch(() => null)
+      ]);
+      const items = [];
+      if (Array.isArray(events)) events.forEach(ev => { const item = activityFromEvent(ev); if (item) items.push(item); });
+      if (Array.isArray(docCommits)) docCommits.forEach(commit => items.push(activityFromDocCommit(commit)));
+      items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+      const top = items.slice(0, 12);
+      container.innerHTML = top.length
+        ? top.map(renderActivityItem).join("")
+        : emptyState("No recent activity yet — events will appear here as the team works.");
+    } catch (error) {
+      container.innerHTML = emptyState("Activity unavailable right now.");
+    }
+  }
+
   const now = new Date();
   const hour = now.getHours();
   $("#today-label").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -1048,7 +1190,7 @@
     const refresh = () => {
       if (refreshing) return;
       refreshing = true;
-      Promise.all([loadGitHubData(), loadCalendarEvents()])
+      Promise.all([loadGitHubData(), loadCalendarEvents(), loadActivity()])
         .catch(() => {})
         .then(() => { refreshing = false; });
     };
@@ -1057,5 +1199,5 @@
   }
 
   setupCalendar();
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); loadAnnouncements(); loadPolls(); scheduleAutoRefresh();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); loadAnnouncements(); loadPolls(); loadActivity(); scheduleAutoRefresh();
 })();

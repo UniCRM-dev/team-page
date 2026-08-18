@@ -367,8 +367,10 @@ async function handleGithubProxy(request, env, url) {
   // Extract the path after /github
   const ghPath = url.pathname.slice("/github".length) + url.search;
 
-  // Path allowlist — /repos/* plus org repo listings for GET
-  const isAllowedPath = ghPath.startsWith("/repos/") || /^\/orgs\/[^/]+\/repos(\?|$)/.test(ghPath);
+  // Path allowlist — /repos/*, org repo listings, and org events (activity feed) for GET
+  const isAllowedPath = ghPath.startsWith("/repos/")
+    || /^\/orgs\/[^/]+\/repos(\?|$)/.test(ghPath)
+    || /^\/orgs\/[^/]+\/events(\?|$)/.test(ghPath);
   if (!isAllowedPath) {
     return json({ error: "Forbidden: only /repos/* paths are proxied" }, { status: 403 });
   }
@@ -378,7 +380,21 @@ async function handleGithubProxy(request, env, url) {
     return json({ error: "GitHub token not configured" }, { status: 502 });
   }
 
-  const upstream = new Request(`https://api.github.com${ghPath}`, {
+  // /orgs/{org}/events only lists *public* events. Rewrite it to the
+  // authenticated user's org feed (/users/{login}/events/orgs/{org}) so
+  // private-repo activity (PRs, issues, doc uploads) is included too.
+  let upstreamPath = ghPath;
+  if (/^\/orgs\/[^/]+\/events(\?|$)/.test(ghPath)) {
+    const login = await getTokenLogin(token);
+    if (login) {
+      const url = new URL(ghPath, "https://api.github.com");
+      const orgName = url.pathname.slice("/orgs/".length).replace(/\/events$/, "");
+      url.pathname = `/users/${login}/events/orgs/${orgName}`;
+      upstreamPath = url.pathname + url.search;
+    }
+  }
+
+  const upstream = new Request(`https://api.github.com${upstreamPath}`, {
     method: "GET",
     headers: {
       "Accept": "application/vnd.github+json",
@@ -1178,6 +1194,35 @@ async function getGithubToken(env) {
   }
 
   return null;
+}
+
+// Resolve the token's GitHub login (cached an hour, keyed on a token
+// prefix) — used to rewrite the public org events feed to the
+// user-scoped feed that includes private-repo events.
+let _tokenLogin = null;  // { key, login, at }
+
+async function getTokenLogin(token) {
+  const key = token.slice(0, 12);
+  const now = Date.now();
+  if (_tokenLogin && _tokenLogin.key === key && now - _tokenLogin.at < 3_600_000) {
+    return _tokenLogin.login;
+  }
+  try {
+    const response = await fetch("https://api.github.com/user", {
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Authorization": `Bearer ${token}`,
+        "User-Agent": "unicrm-dashboard-proxy",
+      },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    _tokenLogin = { key, login: data.login, at: now };
+    return data.login;
+  } catch {
+    return null;
+  }
 }
 
 async function signAppJwt(env) {
