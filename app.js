@@ -206,15 +206,45 @@
     set("#activity-link", org);
     set("#actions-link", configured ? `${repoUrl(repos.operations)}/actions` : org); set("#release-link", configured ? `${repoUrl(repos.product)}/releases` : org);
     set("#sidebar-wiki-link", configured ? `${repoUrl(repos.operations)}/wiki` : org);
-    set("#sidebar-web-link", configured ? repoUrl(repos.sales) : org);
     const cats = (config.discussions && config.discussions.categories) || {};
     const pollsSlug = cats.polls || "polls";
     set("#polls-link", configured ? repoDiscussionCategory(repos.polls, pollsSlug) : org);
     set("#new-poll-link", configured ? repoNewDiscussion(repos.polls, pollsSlug) : org);
     set("#ideas-link", configured ? repoDiscussionCategory(repos.ideas, cats.ideas || "ideas") : org);
     set("#announcements-link", configured ? repoDiscussionCategory(repos.announcements, cats.announcements || "announcements") : org);
-    const repositoryLinks = [["Skills", repos.ideas]];
-    $("#sidebar-repositories").innerHTML = repositoryLinks.map(([name, repo]) => `<a href="${configured ? repoUrl(repo) : "https://github.com/"}" target="_blank" rel="noopener"><span class="nav-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M12 13h4"/><path d="M12 18h6a2 2 0 0 1 2 2v1"/><path d="M12 8h8"/><path d="M16 8V5a2 2 0 0 1 2-2"/><circle cx="16" cy="13" r=".5"/><circle cx="18" cy="3" r=".5"/><circle cx="20" cy="21" r=".5"/><circle cx="20" cy="8" r=".5"/></svg></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`).join("");
+  }
+
+  // Sidebar Repositories — the org's repos, rendered from GitHub once per
+  // page load (no polling), so additions/removals show up on the next
+  // visit. The wiki repo is represented by the Wiki row above (which
+  // deep-links its wiki tab), so it is left out of this list.
+  function renderSidebarRepos(repoNames) {
+    const container = $("#sidebar-repositories");
+    if (!container) return;
+    container.innerHTML = repoNames.map(name =>
+      `<a href="${configured ? repoUrl(name) : "https://github.com/"}" target="_blank" rel="noopener"><span class="nav-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><span>${escapeHtml(name)}</span><b aria-hidden="true">↗</b></a>`
+    ).join("") || `<p class="empty-state">No repositories</p>`;
+  }
+
+  function loadSidebarRepos() {
+    // Instant fallback from config so the section is never empty, then
+    // upgrade to the live org list when the fetch resolves.
+    const fallback = Object.keys(repos).map(key => repos[key])
+      .filter((name, i, arr) => name && name !== repos.operations && arr.indexOf(name) === i);
+    renderSidebarRepos(fallback);
+    if (!configured) return;
+    github(`/orgs/${owner}/repos?per_page=100`)
+      .then(list => {
+        if (!Array.isArray(list)) return;
+        const pushed = {};
+        list.forEach(r => { pushed[r.name] = r.pushed_at || 0; });
+        // Most recently active first
+        renderSidebarRepos(list
+          .map(r => r.name)
+          .filter(name => name !== repos.operations)
+          .sort((a, b) => new Date(pushed[b]) - new Date(pushed[a])));
+      })
+      .catch(() => { /* keep the config fallback */ });
   }
 
   function authHeaders() {
@@ -1308,14 +1338,17 @@
     const refresh = () => {
       if (refreshing) return;
       refreshing = true;
-      Promise.all([loadGitHubData(), loadCalendarEvents(), loadActivity()])
+      Promise.all([loadGitHubData(), loadCalendarEvents()])
         .catch(() => {})
         .then(() => { refreshing = false; });
     };
     setInterval(refresh, seconds * 1000);
+    // The activity feed changes slowly — refresh it hourly instead of on
+    // the 60s cadence; every page load still kicks it off fresh.
+    setInterval(() => { loadActivity().catch(() => {}); }, 3600 * 1000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
   }
 
   setupCalendar();
-  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); loadAnnouncements(); loadPolls(); loadActivity(); scheduleAutoRefresh();
+  setupTheme(); renderStaticData(); configureLinks(); setupInteractions(); setupMessages(); setupDocuments(); resetMetricCards(); loadGitHubData(); loadIdeas(); loadAnnouncements(); loadPolls(); loadActivity(); loadSidebarRepos(); scheduleAutoRefresh();
 })();
