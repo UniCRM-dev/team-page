@@ -353,13 +353,13 @@
       if (releases[0]) { $("#latest-release").textContent = releases[0].tag_name; $("#release-note").textContent = new Date(releases[0].published_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
       else { $("#latest-release").textContent = "—"; $("#release-note").textContent = "No releases yet"; }
       if (runs.workflow_runs && runs.workflow_runs[0]) { const ok = runs.workflow_runs[0].conclusion === "success"; $("#build-health").innerHTML = `<i></i> ${ok ? "Passing" : "Needs attention"}`; $("#build-health").classList.toggle("failed", !ok); $("#build-note").textContent = runs.workflow_runs[0].name; }
-      $("#sync-state").innerHTML = "<i></i> Live from GitHub"; $("#sync-state").classList.add("live");
+      $("#sync-state").innerHTML = "<i></i> GitHub Online"; $("#sync-state").classList.add("live");
       $("#last-updated").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     } catch (error) {
       $("#open-issues").textContent = "—";
       $("#open-prs").textContent = "—";
       $("#pr-note").textContent = "Retrying…";
-      $("#sync-state").innerHTML = "<i></i> Live data unavailable"; $("#sync-state").title = "Could not reach the GitHub API. Check that the configured repos are public and try again.";
+      $("#sync-state").innerHTML = "<i></i> GitHub Disconnected"; $("#sync-state").classList.remove("live"); $("#sync-state").title = "Could not reach the GitHub API. Check that the configured repos are public and try again.";
     }
   }
 

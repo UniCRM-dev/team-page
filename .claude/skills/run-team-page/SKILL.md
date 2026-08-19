@@ -107,7 +107,7 @@ requests whose `Origin` header isn't in `wrangler.toml`
   `index.html` has an inline auth gate checking `sessionStorage`
   `dashboard_token`. The worker 403s localhost origins, so a real login
   is impossible locally — always use `launch mock` to seed a fake token.
-- **"Live data unavailable" + CORS console errors locally are expected.**
+- **"GitHub Disconnected" + CORS console errors locally are expected.**
   The page fetches the deployed worker from localhost; the origin check
   rejects it by design. Smoke only fails on *uncaught page errors*.
 - **Port 8000 is often taken by other projects on this machine.** The

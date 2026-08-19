@@ -27,7 +27,7 @@ python -m http.server 8000
 - `app.js` — one IIFE, no modules, no dependencies. It:
   - Holds the built-in mock `data` object (priorities, blockers, milestones, events, dev/sales tasks, decisions) and renders it into the DOM (`renderMockData`).
   - Wires every link/href across the page to the configured GitHub org/repos (`configureLinks`).
-  - Optionally overlays live data by calling the public GitHub REST API unauthenticated (`loadGitHubData`): repo issue count, open PRs, latest release, latest Actions run. Falls back silently to the mock data on any fetch failure or rate limit, and reflects that state in `#sync-state` ("Mock data" vs "Live from GitHub").
+  - Optionally overlays live data by calling the public GitHub REST API unauthenticated (`loadGitHubData`): repo issue count, open PRs, latest release, latest Actions run. Falls back silently to the mock data on any fetch failure or rate limit, and reflects that state in `#sync-state` ("GitHub Disconnected" vs "GitHub Online").
   - Handles UI interactions (`setupInteractions`): the idea-submission dialog (builds a prefilled GitHub Discussion URL in the org's **Ideas** category — never posts on the user's behalf), workstream tab switching, sidebar active-link state.
   - Owns the theme toggle (`setupTheme`): flips `data-theme` on `<html>`, persists to `localStorage`, and follows the OS preference until the user makes an explicit choice.
 - `styles.css` — the design system. Every color, radius, shadow, font, and layout dimension is a CSS custom property declared in `:root` (light) and `[data-theme="dark"]`. **Nothing below the token block should hardcode a color** — add a token instead. System fonts only; no webfonts, per the no-external-assets rule.
