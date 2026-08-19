@@ -5,7 +5,7 @@ compatibility_date = "2026-08-07"
 [vars]
 # Format: Name:role[:github-login:github-user-id] — login+id make document
 # upload commits link to the uploader's real GitHub account. Users without
-# them commit under the "UniCRM Team Page" fallback identity.
+# them commit under the "MERI Team Page" fallback identity.
 ALLOWED_USERS = "Shawn:dev:ShawnTamez8:301956684,Jesse:dev:jf26028:348332,Courtney:sales,Chelsey:sales"
 ALLOWED_ORIGINS = "https://unicrm-dev.github.io"
 COOKIE_SAMESITE = "none"

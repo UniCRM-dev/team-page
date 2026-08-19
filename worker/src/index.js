@@ -1,5 +1,5 @@
 /**
- * UniCRM Dashboard Proxy — Cloudflare Worker
+ * MERI Dashboard Proxy — Cloudflare Worker
  *
  * Routes:
  *   POST /login        — validate shared password, return session token
@@ -43,7 +43,7 @@ export default {
         return json({
           ok: true,
           service: "unicrm-dashboard-proxy",
-          message: "API for the UniCRM team dashboard. Authenticate via /login, then call the endpoints below.",
+          message: "API for the MERI team dashboard. Authenticate via /login, then call the endpoints below.",
           endpoints: ["/me", "/github/*", "/discussions", "/discussions/comment", "/projects", "/metrics", "/calendar/events", "/messages", "/documents", "/tasks"]
         });
       }
@@ -1212,7 +1212,7 @@ async function handleUploadDocument(request, env) {
   const uploader = parseUsers(env).find(u => u.name.toLowerCase() === session.name.toLowerCase());
   const committer = uploader && uploader.id && uploader.login
     ? { name: session.name, email: `${uploader.id}+${uploader.login}@users.noreply.github.com` }
-    : { name: "UniCRM Team Page", email: "team-page@users.noreply.github.com" };
+    : { name: "MERI Team Page", email: "team-page@users.noreply.github.com" };
 
   try {
     const ghResponse = await fetch(
