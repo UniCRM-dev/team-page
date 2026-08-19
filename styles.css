@@ -1732,6 +1732,9 @@ progress::-moz-progress-bar {
   overflow: auto;
 }
 #doc-viewer-dialog .dialog-actions { margin-top: 18px; }
+/* The drop zone is the upload form's last control — keep the actions
+   from sitting flush against it */
+#upload-dialog .dialog-actions { margin-top: 18px; }
 
 /* Rendered document content (docx via mammoth, markdown via marked) */
 .doc-viewer-doc {
