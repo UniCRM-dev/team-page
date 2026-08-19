@@ -81,16 +81,23 @@
   }
 
   // Detail view for one idea, surfaced in the UI instead of redirecting to GitHub.
+  let currentIdea = null;  // the idea open in the modal (for commenting)
   function openIdeaModal(idea) {
     if (!idea) return;
     const dialog = $("#idea-view-dialog");
     if (!dialog) return;
+    currentIdea = idea;
     $("#idea-view-title").textContent = idea.title || "Untitled idea";
     const when = idea.date ? ` · ${monthDay(idea.date)}` : "";
     $("#idea-view-meta").textContent = `${idea.area || "Idea"} · Submitted by ${idea.submittedBy || "Unknown"}${when}`;
     $("#idea-view-body").textContent = (idea.body || "").trim() || "No additional details provided.";
     const link = $("#idea-view-link");
     if (idea.url) { link.href = idea.url; link.hidden = false; } else { link.hidden = true; }
+    // Comments only work on GitHub-backed ideas (local submissions have no id)
+    const commentForm = $("#idea-comment-form");
+    const commentInput = $("#idea-comment-input");
+    if (commentInput) commentInput.value = "";
+    if (commentForm) commentForm.hidden = !(idea.discussionId && workerUrl);
     dialog.showModal();
   }
 
@@ -115,7 +122,8 @@
           submittedBy: authorName(author) || "Unknown",
           date: discussion.createdAt,
           url: discussion.url,
-          body: discussion.body
+          body: discussion.body,
+          discussionId: discussion.id
         };
       });
       // Local submissions not yet on GitHub stay visible, deduped by title
@@ -458,6 +466,43 @@
     const ideaView = $("#idea-view-dialog");
     $$("#idea-view-dialog [data-close]").forEach(button => button.addEventListener("click", () => ideaView.close()));
     ideaView.addEventListener("click", event => { if (event.target === ideaView) ideaView.close(); });
+
+    // Idea comments — replies are posted to the GitHub discussion via the worker
+    const ideaCommentForm = $("#idea-comment-form");
+    if (ideaCommentForm && workerUrl) {
+      ideaCommentForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        if (!form.reportValidity()) return;
+        if (!currentIdea || !currentIdea.discussionId) return;
+        const input = $("#idea-comment-input");
+        const submit = $("#idea-comment-submit");
+        const body = input.value.trim();
+        if (!body) return;
+        submit.disabled = true;
+        submit.textContent = "Adding…";
+        try {
+          var headers = authHeaders();
+          headers["Content-Type"] = "application/json";
+          const response = await fetch(`${workerUrl}/discussions/comment`, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({ discussionId: currentIdea.discussionId, body })
+          });
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || "Could not add the comment");
+          }
+          showToast("Comment added to GitHub");
+          input.value = "";
+        } catch (error) {
+          showToast(error.message || "Could not add the comment. Try again.");
+        } finally {
+          submit.disabled = false;
+          submit.textContent = "Add comment";
+        }
+      });
+    }
 
     // Show sign-out button when worker auth is active and wire it
     const signOut = $("#sign-out");

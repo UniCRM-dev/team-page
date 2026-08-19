@@ -1124,9 +1124,12 @@ textarea { resize: vertical; }
 #idea-view-dialog .dialog-heading,
 #idea-view-dialog .dialog-copy,
 #idea-view-dialog .idea-view-body,
+#idea-view-dialog .idea-comment-form,
 #idea-view-dialog .dialog-actions { padding-left: 28px; padding-right: 28px; }
 #idea-view-dialog .dialog-heading { padding-top: 28px; }
 #idea-view-dialog .dialog-actions { padding-bottom: 28px; }
+#idea-view-dialog .idea-comment-form { margin-top: 6px; }
+.idea-comment-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
 
 .idea-view-body {
   max-height: 45vh;

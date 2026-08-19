@@ -44,7 +44,7 @@ export default {
           ok: true,
           service: "unicrm-dashboard-proxy",
           message: "API for the UniCRM team dashboard. Authenticate via /login, then call the endpoints below.",
-          endpoints: ["/me", "/github/*", "/discussions", "/projects", "/metrics", "/calendar/events", "/messages", "/documents", "/tasks"]
+          endpoints: ["/me", "/github/*", "/discussions", "/discussions/comment", "/projects", "/metrics", "/calendar/events", "/messages", "/documents", "/tasks"]
         });
       }
       if (method === "POST" && url.pathname === "/login") {
@@ -61,6 +61,9 @@ export default {
       }
       if (method === "GET" && url.pathname === "/discussions") {
         return handleListDiscussions(request, env);
+      }
+      if (method === "POST" && url.pathname === "/discussions/comment") {
+        return handleCommentDiscussion(request, env);
       }
       if (method === "GET" && url.pathname === "/projects") {
         return handleProjectsCount(request, env);
@@ -552,6 +555,56 @@ async function handleListDiscussions(request, env) {
   } catch (err) {
     console.error("List discussions error:", err.message);
     return corsResponse({ error: "Could not list discussions" }, request, env, 502);
+  }
+}
+
+// POST /discussions/comment — add a reply to a discussion (idea inbox)
+async function handleCommentDiscussion(request, env) {
+  const session = await getSession(request, env);
+  if (!session) return notAuthenticated(request, env);
+
+  const token = await getGithubToken(env);
+  if (!token) {
+    return corsResponse({ error: "GitHub token not configured" }, request, env, 502);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return corsResponse({ error: "Invalid JSON body" }, request, env, 400);
+  }
+
+  const discussionId = (body.discussionId || "").trim();
+  const text = (body.body || "").trim();
+  if (!discussionId || !text) {
+    return corsResponse({ error: "discussionId and body are required" }, request, env, 400);
+  }
+  if (text.length > 4000) {
+    return corsResponse({ error: "Comment is too long (max 4000 characters)" }, request, env, 400);
+  }
+
+  // Comments post under the worker's token account, so prefix the
+  // sender's name to keep attribution visible on GitHub.
+  const attributed = `**${session.name}:** ${text}`;
+
+  try {
+    const mutation = `
+      mutation($discussionId: ID!, $body: String!) {
+        addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
+          comment { id url }
+        }
+      }`;
+    const result = await graphql(mutation, { discussionId, body: attributed }, token);
+    if (result.errors) {
+      console.error("Add comment errors:", JSON.stringify(result.errors));
+      return corsResponse({ error: "Failed to add comment" }, request, env, 502);
+    }
+    const comment = result.data.addDiscussionComment.comment;
+    return corsResponse({ ok: true, url: comment.url, comment: { id: comment.id } }, request, env, 201);
+  } catch (err) {
+    console.error("Add comment error:", err.message);
+    return corsResponse({ error: "Could not add comment" }, request, env, 502);
   }
 }
 
