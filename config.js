@@ -11,7 +11,7 @@ window.DASHBOARD_CONFIG = {
       announcements: "team-page-portal",
       documents: "wiki"
     },
-    projectNumber: 1,
+    projectNumber: 2,
     taskProjectNumber: 2,
     labels: { priority: "priority", blocker: "blocked", milestone: "milestone", decision: "decision", feedback: "customer-feedback" }
   },
